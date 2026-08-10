@@ -440,7 +440,7 @@ function Index() {
 
       {/* Main white content */}
       <div className="relative z-10 bg-background" style={{ boxShadow: "0 0 80px 20px rgba(0,0,0,0.18)" }}>
-        <SiteNav active="work" />
+        <TopNav />
         <div style={{ height: `calc(100vh - ${NAV_HEIGHT}px)`, background: "#fafafa" }} />
 
         <div className="flex">
