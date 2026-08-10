@@ -84,10 +84,10 @@ const SECTION_AI_QUESTIONS: Partial<Record<string, string>> = {
 };
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
-  "expression":   "Current interfaces reduce all intent to text boxes. But presence, nuance, and emotion are much richer than that.",
-  "others-think": "We design based on assumptions about how others think — whether that someone is human or AI. Those assumptions are often wrong.",
-  "others-say":   "What gets said back shapes how understood we feel. Whether it's a conversation with a stranger or an AI response, design decides what gets heard.",
-  "i-interpret":  "The way I process what arrives is filtered by what I already believe. Making that filter visible is the first step.",
+  "expression":   "Text boxes flatten everything. A pause, a gesture, a shift in tone — these carry meaning the keyboard can't. I keep wondering what we're leaving out.",
+  "others-think": "I build things based on what I think you need. I'm often wrong. That gap between my model of you and the actual you — that's where design gets interesting.",
+  "others-say":   "The shape of a reply matters as much as the words. When AI talks back, how it says things shapes how heard you feel. When a stranger responds honestly — same thing.",
+  "i-interpret":  "I walk into every conversation carrying invisible assumptions. Some accurate, most not. Making that visible is the whole project.",
 };
 
 // ── Easing ────────────────────────────────────────────────────────────────
@@ -343,12 +343,15 @@ function GroupLabel({ label }: { label: string }) {
 
 function Index() {
   const bgRef              = useRef<HTMLDivElement>(null);
+  const bgTopRef           = useRef<HTMLDivElement>(null);
   const contentWrapperRef  = useRef<HTMLDivElement>(null);
   const diagramInnerRef    = useRef<HTMLDivElement>(null);
   const heroTextRef        = useRef<HTMLDivElement>(null);
   const heroHintRef        = useRef<HTMLDivElement>(null);
-  const footerSpacerRef = useRef<HTMLDivElement>(null);
-  const settledRef      = useRef(false);
+  const footerSpacerRef     = useRef<HTMLDivElement>(null);
+  const settledRef          = useRef(false);
+  const activeSectionRef    = useRef<string | null>(null);
+  const othersTypeRef       = useRef<"human" | "AI" | null>(null);
 
   const lastScrollY = useRef(0);
 
@@ -382,12 +385,12 @@ function Index() {
     return () => { document.head.removeChild(style); };
   }, []);
 
-  // Brief opacity dip when section changes, then snap back
+  // Brief opacity dip when section or othersType changes
   useEffect(() => {
     setQuestionVisible(false);
     const t = setTimeout(() => setQuestionVisible(true), 160);
     return () => clearTimeout(t);
-  }, [activeSection]);
+  }, [activeSection, othersType]);
 
   // Scroll animation loop — imperative DOM writes, no React re-renders
   useEffect(() => {
@@ -401,7 +404,8 @@ function Index() {
         diagramInnerRef.current.style.maxWidth  = `${w}px`;
         diagramInnerRef.current.style.transform = `translateX(calc(${-31 * p}vw))`;
       }
-      if (bgRef.current) bgRef.current.style.opacity = String(p);
+      if (bgRef.current)    bgRef.current.style.opacity    = String(p);
+      if (bgTopRef.current) bgTopRef.current.style.opacity = String(p);
       const ho = Math.max(0, 1 - p / 0.4);
       if (heroTextRef.current) {
         heroTextRef.current.style.opacity      = String(ho);
@@ -413,11 +417,43 @@ function Index() {
       // Shift content wrapper from vertically-centered → top-aligned as we settle
       // justifyContent must stay "center" — translateX handles horizontal positioning
       if (contentWrapperRef.current) {
-        contentWrapperRef.current.style.alignItems     = p > 0.5 ? "flex-start" : "center";
-        contentWrapperRef.current.style.paddingTop     = p > 0.5 ? `${Math.min(4, (p - 0.5) / 0.5 * 4)}rem` : "0";
+        contentWrapperRef.current.style.alignItems   = p > 0.5 ? "flex-start" : "center";
+        contentWrapperRef.current.style.paddingTop   = p > 0.5 ? `${Math.min(88, (p - 0.5) / 0.5 * 88)}px` : "0";
+        contentWrapperRef.current.style.paddingLeft  = p >= 1 ? "3rem" : "0";
+        contentWrapperRef.current.style.paddingRight = p >= 1 ? "3rem" : "0";
       }
       const now = raw >= 1;
       if (now !== settledRef.current) { settledRef.current = now; setSettled(now); }
+
+      // ── Direct position tracking (replaces IntersectionObserver) ──────────
+      // Reads getBoundingClientRect() every tick → always matches what's in view,
+      // regardless of scroll direction or section height.
+      const line = NAV_HEIGHT + 10; // detection line: just below the nav
+
+      // Active section: whose top has just crossed the line (closest from below)
+      let newActive: string | null = null;
+      let bestTop = -Infinity;
+      SECTION_TABS.forEach(({ id }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const top = el.getBoundingClientRect().top;
+        if (top <= line && top > bestTop) { bestTop = top; newActive = id; }
+      });
+      if (newActive !== activeSectionRef.current) {
+        activeSectionRef.current = newActive;
+        setActiveSection(newActive);
+      }
+
+      // AI/human sub-group: check whether the AI sentinel has crossed the line
+      let newOthersType: "human" | "AI" | null = null;
+      if (newActive === "others-think" || newActive === "others-say") {
+        const aiEl = document.getElementById(`sentinel-${newActive}-ai`);
+        newOthersType = (aiEl && aiEl.getBoundingClientRect().top <= line) ? "AI" : "human";
+      }
+      if (newOthersType !== othersTypeRef.current) {
+        othersTypeRef.current = newOthersType;
+        setOthersType(newOthersType);
+      }
     };
     const onScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -439,47 +475,6 @@ function Index() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Active section via IntersectionObserver
-  useEffect(() => {
-    const obs: IntersectionObserver[] = [];
-    SECTION_TABS.forEach(({ id }) => {
-      const el = document.getElementById(id); if (!el) return;
-      const o = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
-        { threshold: 0.25, rootMargin: `-${NAV_HEIGHT + 52}px 0px -35% 0px` }
-      );
-      o.observe(el); obs.push(o);
-    });
-    return () => obs.forEach(o => o.disconnect());
-  }, []);
-
-  // Human/AI sub-group tracking — sentinel divs before each GroupLabel
-  useEffect(() => {
-    const margin = `-${NAV_HEIGHT + 40}px 0px -45% 0px`;
-    const obs: IntersectionObserver[] = [];
-    const watch = (id: string, type: "human" | "AI") => {
-      const el = document.getElementById(id); if (!el) return;
-      const o = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setOthersType(type); },
-        { threshold: 0, rootMargin: margin }
-      );
-      o.observe(el); obs.push(o);
-    };
-    watch("sentinel-others-think-human", "human");
-    watch("sentinel-others-think-ai",    "AI");
-    watch("sentinel-others-say-human",   "human");
-    watch("sentinel-others-say-ai",      "AI");
-    return () => obs.forEach(o => o.disconnect());
-  }, []);
-
-  // Reset othersType when moving to sections without human/AI split
-  useEffect(() => {
-    if (activeSection === "expression" || activeSection === "i-interpret") {
-      setOthersType(null);
-    } else if (activeSection === "others-think" || activeSection === "others-say") {
-      setOthersType("human"); // default to human on section entry
-    }
-  }, [activeSection]);
 
   useEffect(() => {
     const el = footerSpacerRef.current; if (!el) return;
