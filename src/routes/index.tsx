@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback, type ReactNode } from "react"
 import { CardIcon } from "./-CardIcon";
 import { ARTICLE_META } from "./-articleMeta";
 import { NAV_ITEMS, navHref } from "./-navItems";
+import { SiteNav } from "./-SiteNav";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -258,13 +259,100 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI, hideLabe
   );
 }
 
+// ── Article modal ──────────────────────────────────────────────────────────
+
+interface CardModalData { href: string; title: string; meta: string; media: CardMedia; }
+
+function ArticleModal({ card, onClose }: { card: CardModalData; onClose: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const slug = card.href.replace(/^\//, "");
+  const sections = ARTICLE_META[slug]?.sections ?? [];
+
+  useEffect(() => {
+    const el = bodyRef.current; if (!el) return;
+    const onScroll = () => { if (el.scrollTop > 20) setExpanded(true); };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[59] bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="fixed inset-x-0 bottom-0 z-[60] bg-white shadow-2xl"
+        style={{
+          height: expanded ? "100vh" : "72vh",
+          borderRadius: expanded ? 0 : "24px 24px 0 0",
+          transition: "height 0.45s cubic-bezier(0.32, 0.72, 0, 1), border-radius 0.45s ease",
+        }}
+      >
+        {!expanded && (
+          <div className="absolute top-2.5 inset-x-0 flex justify-center pointer-events-none">
+            <div className="w-10 h-1 rounded-full bg-neutral-200" />
+          </div>
+        )}
+
+        <div className="flex items-start justify-between px-7 pt-7 pb-5 border-b border-neutral-100">
+          <div>
+            <p className="text-xs text-neutral-400 mb-1">{card.meta}</p>
+            <h2 className="text-xl font-semibold text-neutral-900 leading-snug max-w-sm">{card.title}</h2>
+          </div>
+          <button onClick={onClose} className="ml-4 mt-0.5 text-2xl leading-none text-neutral-300 hover:text-neutral-900 transition-colors shrink-0">×</button>
+        </div>
+
+        <div ref={bodyRef} className="overflow-y-auto" style={{ height: "calc(100% - 90px)" }}>
+          <div className="px-7 pt-5">
+            {card.media.type === "image" && (
+              <img src={card.media.src} alt={card.title} className="w-full rounded-2xl object-cover max-h-56" />
+            )}
+            {card.media.type === "video" && (
+              <video src={`${card.media.src}#t=0.001`} preload="metadata" muted playsInline className="w-full rounded-2xl object-cover max-h-56" />
+            )}
+            {card.media.type === "concept" && (
+              <div className="w-full h-40 rounded-2xl flex items-center justify-center" style={{ background: card.media.gradient ?? "linear-gradient(135deg,#f5f5f5,#e8e8e8)" }}>
+                {card.media.icon && <span style={{ fontSize: 40 }}>{card.media.icon}</span>}
+              </div>
+            )}
+          </div>
+
+          {sections.length > 0 && (
+            <div className="px-7 pt-6">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-neutral-400 mb-3">In this article</p>
+              <ul className="space-y-2">
+                {sections.map((s, i) => <li key={i} className="text-sm text-neutral-600 leading-snug">{s}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div className="px-7 py-8">
+            <a
+              href={card.href}
+              className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-5 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
+            >
+              Read full article →
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Card ──────────────────────────────────────────────────────────────────
 
-function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange, onMouseMove }: {
+function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange, onMouseMove, onCardClick }: {
   title: string; meta: string; href?: string; media: CardMedia;
   badge?: string; isExternal?: boolean; slug?: string;
   onHoverChange?: (slug: string | null) => void;
   onMouseMove?: (e: React.MouseEvent) => void;
+  onCardClick?: (card: CardModalData) => void;
 }) {
   const isVideo = media.type === "video";
   const cls = "group relative rounded-2xl bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] block";
@@ -286,41 +374,46 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
       <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-white">
         {media.type === "video" && <video src={`${media.src}#t=0.001`} preload="metadata" muted loop playsInline className="h-full w-full object-cover" style={media.transform ? { transform: media.transform } : undefined} />}
         {media.type === "image" && <img src={media.src} alt={title} className={
-          media.thumbnailSize === "xs"     ? "w-8 h-8 object-contain" :
-          media.thumbnailSize === "small"  ? "w-16 h-16 object-contain" :
-          media.thumbnailSize === "medium" ? "w-32 h-32 object-contain" :
-          "h-full w-full object-cover"
+"h-full w-full object-cover"
         } />}
         {media.type === "concept" && (
           <div className="h-full w-full flex flex-col items-center justify-center gap-3 px-8 py-6" style={{ background: media.gradient ?? "linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%)" }}>
-            {media.icon && <span style={{ fontSize: 52 }}>{media.icon}</span>}
+            {media.icon && <span style={{ fontSize: 80 }}>{media.icon}</span>}
             {media.label && <p className="text-xs text-neutral-500 text-center leading-relaxed">{media.label}</p>}
           </div>
         )}
         <CardIcon hasVideo={isVideo} />
       </div>
       <div className="px-2 pb-2 pt-4">
-        <p className="text-xs text-neutral-500">{meta}</p>
         <h3 className="mt-1 text-[15px] font-medium text-neutral-900 leading-snug">{title}</h3>
       </div>
     </>
   );
   if (!href) return <div className={cls} {...handlers}>{inner}</div>;
+  if (onCardClick && !isExternal) {
+    return (
+      <button onClick={() => onCardClick({ href, title, meta, media })} className={cls + " text-left w-full"} {...handlers}>
+        {inner}
+      </button>
+    );
+  }
   return <a href={href} target={isExternal ? "_blank" : undefined} rel={isExternal ? "noopener noreferrer" : undefined} className={cls} {...handlers}>{inner}</a>;
 }
 
 // ── Sub-group divider ─────────────────────────────────────────────────────
 
-function TopNav() {
+function TopNav({ visible }: { visible: boolean }) {
+  void NAV_ITEMS; void navHref;
   return (
-    <header className="sticky top-0 z-50 flex items-center px-8 bg-white/95 backdrop-blur-sm border-b border-neutral-100" style={{ height: NAV_HEIGHT }}>
-      <Link to="/" className="text-[15px] font-semibold tracking-tight text-neutral-900 mr-auto">Qiyu</Link>
-      <nav className="flex items-center gap-8">
-        {NAV_ITEMS.map((l) => (
-          <Link key={l} to={navHref(l)} className={["text-sm transition-colors", l === "work" ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>{l}</Link>
-        ))}
-      </nav>
-    </header>
+    <SiteNav
+      active="work"
+      headerProps={{
+        style: {
+          transform: visible ? "translateY(0)" : `translateY(-${NAV_HEIGHT}px)`,
+          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        },
+      }}
+    />
   );
 }
 
@@ -348,7 +441,8 @@ function Index() {
   const activeSectionRef    = useRef<string | null>(null);
   const othersTypeRef       = useRef<"human" | "AI" | null>(null);
 
-  const lastScrollY = useRef(0);
+  const lastScrollY    = useRef(0);
+  const savedScrollY   = useRef(0);
 
   const [settled, setSettled]                 = useState(false);
   const [activeSection, setActiveSection]     = useState<string | null>(null);
@@ -358,12 +452,24 @@ function Index() {
   const [navVisible, setNavVisible]           = useState(true);
   const [cursorPos, setCursorPos]             = useState({ x: 0, y: 0 });
   const [hoveredSlug, setHoveredSlug]         = useState<string | null>(null);
+  const [openedCard, setOpenedCard]           = useState<CardModalData | null>(null);
 
   const hoveredSections = hoveredSlug ? (ARTICLE_META[hoveredSlug]?.sections ?? []) : [];
   const hoverKind = hoveredSlug && ARTICLE_META[hoveredSlug]?.sections ? "Article" : null;
+  const handleCardClick = useCallback((card: CardModalData) => {
+    savedScrollY.current = window.scrollY;
+    setOpenedCard(card);
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    setOpenedCard(null);
+    requestAnimationFrame(() => window.scrollTo({ top: savedScrollY.current }));
+  }, []);
+
   const ch = {
     onHoverChange: setHoveredSlug,
     onMouseMove: (e: React.MouseEvent) => setCursorPos({ x: e.clientX, y: e.clientY }),
+    onCardClick: handleCardClick,
   };
 
   // CSS keyframe for question title entrance
@@ -524,7 +630,7 @@ function Index() {
             Only diagramInnerRef (which sits in the left panel in split mode)
             has pointerEvents: auto — it's the only interactive element here. */}
         <div ref={contentWrapperRef} style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", overflow: "hidden" }}>
-          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", height: "100%", maxWidth: 600, pointerEvents: "auto", overflow: "hidden", clipPath: "inset(0 -20px)" }}>
+          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: settled ? "flex-start" : "center", width: "100%", height: "100%", maxWidth: 600, pointerEvents: "auto", overflow: "hidden", clipPath: "inset(0 -20px)" }}>
 
             {/* Hero header */}
             <div ref={heroTextRef} style={{ textAlign: "center", marginBottom: "2.5rem", width: "100%" }}>
@@ -566,9 +672,11 @@ function Index() {
               </div>
             )}
 
-            {/* Hero hint (visible in hero mode only) */}
-            <div ref={heroHintRef} style={{ marginTop: "1.5rem", textAlign: "center" }}>
-              <svg width="14" height="18" viewBox="0 0 14 18" fill="none" style={{ opacity: 0.35, margin: "0 auto" }}><path d="M7 1v16M7 17l-5-5M7 17l5-5" stroke="#a3a3a3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {/* Hero hint — lower, bigger, more prominent */}
+            <div ref={heroHintRef} style={{ marginTop: "4rem", textAlign: "center" }}>
+              <svg width="20" height="26" viewBox="0 0 20 26" fill="none" style={{ opacity: 0.55, margin: "0 auto", display: "block" }}>
+                <path d="M10 1v24M10 25L2 17M10 25l8-8" stroke="#a3a3a3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </div>
 
             {/* Bottom spacer */}
@@ -579,7 +687,7 @@ function Index() {
 
       {/* Main white content */}
       <div className="relative z-10 bg-background" style={{ boxShadow: "0 0 80px 20px rgba(0,0,0,0.18)" }}>
-        <TopNav />
+        <TopNav visible={navVisible} />
         <div style={{ height: `calc(100vh - ${NAV_HEIGHT}px)`, background: "#fafafa" }} />
 
         <div className="flex">
@@ -590,14 +698,11 @@ function Index() {
 
             {/* ── 01 New ways to express ── */}
             <section id="expression" className="px-6 pt-8 pb-12 scroll-mt-24">
-              <div className="flex justify-end mb-5">
-                <a href="/play" className="text-sm text-neutral-400 hover:text-white transition-colors">See all →</a>
-              </div>
               <div className="grid grid-cols-2 gap-5">
                 <Card title="Hand gesture interactions" meta="Vibe-coding · Embodied" href="/play" {...ch} media={{ type: "video", src: "/articles/hand-gesture.mp4" }} />
                 <Card title="Voice interaction" meta="Vibe-coding · Voice" href="/play" {...ch} media={{ type: "video", src: "/articles/voice.mp4" }} />
                 <Card title="Palo Alto moment" meta="Vibe-coding · Place & context" href="/play" {...ch} media={{ type: "video", src: "/articles/palo-alto.mp4" }} />
-                <Card title="Reimagining the chatbot" meta="Prototype · Collection" href="/reimagining-the-chatbot" slug="reimagining-the-chatbot" {...ch} media={{ type: "image", src: "/articles/chatbot-thumb.png", thumbnailSize: "medium" }} />
+                <Card title="Reimagining the chatbot" meta="Prototype · Collection" href="/reimagining-the-chatbot" slug="reimagining-the-chatbot" {...ch} media={{ type: "image", src: "/articles/chatbot-thumb.png" }} />
                 <Card title="Product launch from 0–1" meta="Case study · 0→1" href="/product-launch-from-0-1" slug="product-launch-from-0-1" {...ch} media={{ type: "image", src: "/articles/product-launch-thumb.png" }} />
               </div>
             </section>
@@ -606,20 +711,17 @@ function Index() {
 
             {/* ── 02 How others think ── */}
             <section id="others-think" className="px-6 pt-8 pb-12 scroll-mt-24">
-              <div className="flex justify-end mb-5">
-                <a href="/think" className="text-sm text-neutral-400 hover:text-white transition-colors">See frameworks →</a>
-              </div>
               <div className="grid grid-cols-2 gap-5">
                 <div id="sentinel-others-think-human" className="col-span-2" style={{ height: 0 }} />
-                <GroupLabel label="others = human" />
+                <GroupLabel label="Others = human" />
                 <Card title="Research through design" meta="Case study · Service design" href="/design-as-a-research-tool" slug="design-as-a-research-tool" {...ch} media={{ type: "image", src: "/articles/design-as-research-tool-thumb.png" }} />
                 <Card title="A Social Experiment about meeting strangers" meta="Experiment · Connection" href="https://www.linkedin.com/feed/update/urn:li:activity:7404207024164683776/" isExternal {...ch} media={{ type: "image", src: "/articles/meet-stranger-calendly.png" }} />
                 <div id="sentinel-others-think-ai" className="col-span-2" style={{ height: 0 }} />
-                <GroupLabel label="others = AI" />
-                <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png", thumbnailSize: "medium" }} />
-                <Card title="Design the Human-AI relationships, then interaction" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
-                <Card title="Personalization? What defines a person?" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.svg", thumbnailSize: "xs" }} />
-                <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.svg", thumbnailSize: "small" }} />
+                <GroupLabel label="Others = AI" />
+                <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png" }} />
+                <Card title="Design the Human-AI relationships, then interaction" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
+                <Card title="Personalization? What defines a person?" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.svg" }} />
+                <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.svg" }} />
               </div>
             </section>
 
@@ -627,21 +729,18 @@ function Index() {
 
             {/* ── 03 What others say ── */}
             <section id="others-say" className="px-6 pt-8 pb-12 scroll-mt-24">
-              <div className="flex justify-end mb-5">
-                <a href="/listen" className="text-sm text-neutral-400 hover:text-white transition-colors">Listen →</a>
-              </div>
               <div className="grid grid-cols-2 gap-5">
                 <div id="sentinel-others-say-human" className="col-span-2" style={{ height: 0 }} />
-                <GroupLabel label="others = human" />
+                <GroupLabel label="Others = human" />
                 <Card title="Prototypes beyond software" meta="Non-software · Analog" href="/hello-humans" {...ch} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
                 <Card title="Voices that shaped how I think" meta="Interactive graph · /listen" href="/listen" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
 
                 <div id="sentinel-others-say-ai" className="col-span-2" style={{ height: 0 }} />
-                <GroupLabel label="others = AI" />
-                <Card title="Conversations that earn trust" meta="Research · Conversation design" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
-                <Card title="What do prototypes prototype?" meta="Article · Method" href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...ch} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg", thumbnailSize: "medium" }} />
+                <GroupLabel label="Others = AI" />
+                <Card title="Conversations that earn trust" meta="Research · Conversation design" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
+                <Card title="What do prototypes prototype?" meta="Article · Method" href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...ch} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg" }} />
                 <Card title="Google Cloud — Conversational AI" meta="Prototype · 0→1" href="/google-cloud" slug="google-cloud" {...ch} media={{ type: "image", src: "/articles/google-cloud-thumb.png" }} />
-                <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", thumbnailSize: "small" }} />
+                <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg" }} />
               </div>
             </section>
 
@@ -650,7 +749,7 @@ function Index() {
             {/* ── 04 I interpret ── */}
             <section id="i-interpret" className="px-6 pt-8 pb-12 scroll-mt-24">
               <div className="grid grid-cols-2 gap-5">
-                <Card title="How Claude is shaping how I think" meta="Research · Tools" href="/claude-code-research" slug="claude-code-research" {...ch} media={{ type: "image", src: "/articles/claude-code-thumb.png", thumbnailSize: "small" }} />
+                <Card title="How Claude is shaping how I think" meta="Research · Tools" href="/claude-code-research" slug="claude-code-research" {...ch} media={{ type: "image", src: "/articles/claude-code-thumb.png" }} />
                 <Card title="AIOS — seeing your own blindspots" meta="Prototype · Self-reflection" badge="in progress" {...ch} media={{ type: "concept", icon: "◎", label: "A personal OS for mapping what I know, don't know, and don't know I don't know.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
                 <Card title="AI-supported journaling" meta="Concept · Self-understanding" badge="coming soon" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f5f5f0 0%,#e8e8e0 100%)", label: "Using AI to surface patterns in how I interpret the world and what I actually want." }} />
               </div>
@@ -662,6 +761,8 @@ function Index() {
       </div>
 
       <div ref={footerSpacerRef} className="h-screen" />
+
+      {openedCard && <ArticleModal card={openedCard} onClose={handleModalClose} />}
     </div>
   );
 }
