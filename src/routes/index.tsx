@@ -24,29 +24,35 @@ type CardMedia =
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const NAV_HEIGHT   = 52;
-const LEFT_W       = "38%";
-const SCROLL_DIST  = 500; // px of scroll over which the animation plays
+const NAV_HEIGHT  = 52;
+const LEFT_W      = "38%";
+const SCROLL_DIST = 500;
 
 const SEGMENT_TO_SECTION: Record<string, string> = {
   "behave":           "expression",
-  "i-interpret":      "self-knowledge",
-  "others-interpret": "interpretation",
-  "others-say":       "listening",
+  "others-interpret": "others-think",
+  "others-say":       "others-say",
+  "i-interpret":      "i-interpret",
 };
 const SECTION_TO_SEGMENT: Record<string, string> = Object.fromEntries(
   Object.entries(SEGMENT_TO_SECTION).map(([k, v]) => [v, k])
 );
 const SECTION_TABS = [
-  { id: "expression",     label: "New ways to express"    },
-  { id: "self-knowledge", label: "Knowing your unknowns"  },
-  { id: "interpretation", label: "When meaning gets lost" },
-  { id: "listening",      label: "What others bring"      },
+  { id: "expression",   label: "New ways to express" },
+  { id: "others-think", label: "How others think"    },
+  { id: "others-say",   label: "What others say"     },
+  { id: "i-interpret",  label: "I interpret"         },
 ] as const;
+
+const SECTION_QUESTIONS: Record<string, string> = {
+  "expression":   "Is there a richer way to express yourself?",
+  "others-think": "How do you understand what others are thinking?",
+  "others-say":   "What does it sound like when others respond?",
+  "i-interpret":  "Do you know what you actually want?",
+};
 
 // ── Easing ────────────────────────────────────────────────────────────────
 
-// smooth ease-in-out: slow start, fast middle, slow end
 function ease(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
@@ -105,9 +111,13 @@ function DearFooter() {
   };
   const content = letters[mode];
   return (
-    <div className="flex h-full flex-col items-center justify-center px-6">
-      <p className="absolute top-8 text-[11px] uppercase tracking-[0.2em] text-white/20">scroll up to explore</p>
-      <div className="w-full max-w-xl">
+    <div className="flex h-full items-center" style={{ paddingLeft: LEFT_W }}>
+      <div className="absolute top-6 inset-x-0 flex justify-center pointer-events-none">
+        <svg width="16" height="20" viewBox="0 0 16 20" fill="none" style={{ opacity: 0.18 }}>
+          <path d="M8 18V2M8 2L2 8M8 2l6 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <div className="w-full max-w-xl px-12">
         <div className="mb-10 flex flex-wrap gap-2">
           {(Object.keys(letters) as DearMode[]).map((key) => (
             <button key={key} onClick={() => setMode(key)}
@@ -127,9 +137,7 @@ function DearFooter() {
 
 // ── Two circles diagram ────────────────────────────────────────────────────
 
-function TwoCirclesDiagram({
-  activeSegment, onSegmentClick,
-}: {
+function TwoCirclesDiagram({ activeSegment, onSegmentClick }: {
   activeSegment?: string | null;
   onSegmentClick?: (id: string) => void;
 }) {
@@ -142,21 +150,16 @@ function TwoCirclesDiagram({
     return "#a3a3a3";
   };
   const ps = (id: string) => ({
-    stroke: col(id),
-    strokeWidth: (activeSegment === id || hovered === id) ? 2 : 1.5,
+    stroke: col(id), strokeWidth: (activeSegment === id || hovered === id) ? 2 : 1.5,
     transition: "stroke 160ms, stroke-width 160ms",
     cursor: onSegmentClick ? "pointer" as const : "default" as const,
   });
-  const ts = (id: string): React.CSSProperties => ({
-    fill: col(id), transition: "fill 160ms",
-    cursor: onSegmentClick ? "pointer" : "default",
-  });
+  const ts = (id: string): React.CSSProperties => ({ fill: col(id), transition: "fill 160ms", cursor: onSegmentClick ? "pointer" : "default" });
   const anyFocus = !!(activeSegment || hovered);
   const cs = anyFocus ? "#d4d4d4" : "#737373";
   const ct = anyFocus ? "#c4c4c4" : "#404040";
   const seg = (id: string, children: ReactNode) => (
-    <g onMouseEnter={() => setHovered(id)} onMouseLeave={() => setHovered(null)}
-       onClick={() => onSegmentClick?.(id)}>{children}</g>
+    <g onMouseEnter={() => setHovered(id)} onMouseLeave={() => setHovered(null)} onClick={() => onSegmentClick?.(id)}>{children}</g>
   );
   return (
     <svg viewBox="0 0 640 230" fill="none" className="w-full" style={{ overflow: "visible" }}>
@@ -234,7 +237,18 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
   return <a href={href} target={isExternal ? "_blank" : undefined} rel={isExternal ? "noopener noreferrer" : undefined} className={cls} {...handlers}>{inner}</a>;
 }
 
-// ── Top nav ───────────────────────────────────────────────────────────────
+// ── Sub-group divider ─────────────────────────────────────────────────────
+
+function GroupLabel({ label }: { label: string }) {
+  return (
+    <div className="col-span-2 flex items-center gap-3 mt-4 mb-1">
+      <span style={{ fontSize: 10, color: "#c4c4c4", letterSpacing: "0.12em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: "#f0f0f0" }} />
+    </div>
+  );
+}
+
+// ── Index ─────────────────────────────────────────────────────────────────
 
 function TopNav() {
   return (
@@ -249,22 +263,19 @@ function TopNav() {
   );
 }
 
-// ── Index ─────────────────────────────────────────────────────────────────
-
 function Index() {
-  // ── Refs for the imperative animation loop (no re-renders) ──
-  const bgRef           = useRef<HTMLDivElement>(null); // left panel bg fill
-  const diagramInnerRef = useRef<HTMLDivElement>(null); // gets translateX
-  const heroTextRef     = useRef<HTMLDivElement>(null); // fades out
-  const heroHintRef     = useRef<HTMLDivElement>(null); // fades out
-  const splitDescRef    = useRef<HTMLDivElement>(null); // fades in
-  const settledRef      = useRef(false);                // tracks without re-render
+  const bgRef           = useRef<HTMLDivElement>(null);
+  const diagramInnerRef = useRef<HTMLDivElement>(null);
+  const heroTextRef     = useRef<HTMLDivElement>(null);
+  const heroHintRef     = useRef<HTMLDivElement>(null);
+  const splitDescRef    = useRef<HTMLDivElement>(null);
+  const settledRef      = useRef(false);
 
-  // ── React state — only changes ONCE when animation settles ──
-  const [settled, setSettled]           = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [cursorPos, setCursorPos]       = useState({ x: 0, y: 0 });
-  const [hoveredSlug, setHoveredSlug]   = useState<string | null>(null);
+  const [settled, setSettled]                 = useState(false);
+  const [activeSection, setActiveSection]     = useState<string | null>(null);
+  const [questionVisible, setQuestionVisible] = useState(true);
+  const [cursorPos, setCursorPos]             = useState({ x: 0, y: 0 });
+  const [hoveredSlug, setHoveredSlug]         = useState<string | null>(null);
 
   const hoveredSections = hoveredSlug ? (ARTICLE_META[hoveredSlug]?.sections ?? []) : [];
   const hoverKind = hoveredSlug && ARTICLE_META[hoveredSlug]?.sections ? "Article" : null;
@@ -273,77 +284,69 @@ function Index() {
     onMouseMove: (e: React.MouseEvent) => setCursorPos({ x: e.clientX, y: e.clientY }),
   };
 
-  // ── THE animation loop — runs per scroll tick, writes directly to DOM ──
+  // CSS keyframe for question title entrance
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes qFadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .q-title { animation: qFadeIn 0.35s ease forwards; }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+
+  // Brief opacity dip when section changes, then snap back
+  useEffect(() => {
+    setQuestionVisible(false);
+    const t = setTimeout(() => setQuestionVisible(true), 160);
+    return () => clearTimeout(t);
+  }, [activeSection]);
+
+  // Scroll animation loop — imperative DOM writes, no React re-renders
   useEffect(() => {
     let raf = 0;
-
     const tick = () => {
-      // progress: 0 at top, 1 when scrolled SCROLL_DIST px
       const raw = Math.min(1, Math.max(0, window.scrollY / SCROLL_DIST));
       const p   = ease(raw);
       const vw  = window.innerWidth;
-
-      // Diagram slides from center (0) to left panel center (-31vw)
-      // Also shrinks from hero width → left panel width
       if (diagramInnerRef.current) {
-        const heroW  = Math.min(600, vw * 0.9);
-        const splitW = vw * 0.38 - 60; // left panel minus padding
-        const w      = heroW + (splitW - heroW) * p;
-        diagramInnerRef.current.style.maxWidth   = `${w}px`;
-        diagramInnerRef.current.style.transform  = `translateX(calc(${-31 * p}vw))`;
+        const w = Math.min(600, vw * 0.9) * (1 - p) + (vw * 0.38 - 60) * p;
+        diagramInnerRef.current.style.maxWidth  = `${w}px`;
+        diagramInnerRef.current.style.transform = `translateX(calc(${-31 * p}vw))`;
       }
-
-      // Left panel background: transparent → #fafafa
-      if (bgRef.current) {
-        bgRef.current.style.opacity = String(p);
-      }
-
-      // Hero text + hint: fade out over first 40% of progress
-      const heroOpacity = String(Math.max(0, 1 - p / 0.4));
-      if (heroTextRef.current) heroTextRef.current.style.opacity = heroOpacity;
-      if (heroHintRef.current) heroHintRef.current.style.opacity = heroOpacity;
-
-      // Split description: fade in from 60% → 100% of progress
+      if (bgRef.current) bgRef.current.style.opacity = String(p);
+      const ho = String(Math.max(0, 1 - p / 0.4));
+      if (heroTextRef.current) heroTextRef.current.style.opacity = ho;
+      if (heroHintRef.current) heroHintRef.current.style.opacity = ho;
       if (splitDescRef.current) {
-        const descOp = Math.max(0, (p - 0.6) / 0.4);
-        splitDescRef.current.style.opacity      = String(descOp);
-        splitDescRef.current.style.pointerEvents = descOp > 0.5 ? "auto" : "none";
+        const d = Math.max(0, (p - 0.6) / 0.4);
+        splitDescRef.current.style.opacity      = String(d);
+        splitDescRef.current.style.pointerEvents = d > 0.5 ? "auto" : "none";
       }
-
-      // React state: flip exactly once when crossing the threshold
-      const nowSettled = raw >= 1;
-      if (nowSettled !== settledRef.current) {
-        settledRef.current = nowSettled;
-        setSettled(nowSettled); // single re-render, once
-      }
+      const now = raw >= 1;
+      if (now !== settledRef.current) { settledRef.current = now; setSettled(now); }
     };
-
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(tick);
-    };
-
+    const onScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
     window.addEventListener("scroll", onScroll, { passive: true });
-    tick(); // run immediately on mount
+    tick();
+    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, []);
 
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
-    };
-  }, []); // empty — setSettled is stable, all refs are stable
-
-  // ── Active section tracker (IntersectionObserver) ──
+  // Active section via IntersectionObserver
   useEffect(() => {
-    const observers: IntersectionObserver[] = [];
+    const obs: IntersectionObserver[] = [];
     SECTION_TABS.forEach(({ id }) => {
       const el = document.getElementById(id); if (!el) return;
-      const obs = new IntersectionObserver(
+      const o = new IntersectionObserver(
         ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
         { threshold: 0.25, rootMargin: `-${NAV_HEIGHT + 52}px 0px -35% 0px` }
       );
-      obs.observe(el); observers.push(obs);
+      o.observe(el); obs.push(o);
     });
-    return () => observers.forEach(o => o.disconnect());
+    return () => obs.forEach(o => o.disconnect());
   }, []);
 
   const scrollToSection = useCallback((id: string) => {
@@ -352,44 +355,12 @@ function Index() {
     setActiveSection(id);
   }, []);
 
-  // Clicking a diagram segment scrolls past the animation and into that section
   const handleSegmentClick = useCallback((segId: string) => {
-    const sectionId = SEGMENT_TO_SECTION[segId]; if (!sectionId) return;
-    scrollToSection(sectionId);
-    // scrollToSection scrolls to >SCROLL_DIST naturally, animation plays on the way
+    const s = SEGMENT_TO_SECTION[segId]; if (!s) return;
+    scrollToSection(s);
   }, [scrollToSection]);
 
   const activeSegment = activeSection ? SECTION_TO_SEGMENT[activeSection] : null;
-
-  // ── Cards ────────────────────────────────────────────────────────────────
-  const expressionCards = (<>
-    <Card title="Reimagining the chatbot"           meta="Prototype · Collection"     href="/reimagining-the-chatbot"    slug="reimagining-the-chatbot"   {...ch} media={{ type: "image", src: "/articles/chatbot-thumb.png" }} />
-    <Card title="Hand gesture interactions"          meta="Vibe-coding · Embodied"     href="/play"                                                        {...ch} media={{ type: "video", src: "/articles/hand-gesture.mp4" }} />
-    <Card title="Voice interaction"                  meta="Vibe-coding · Voice"        href="/play"                                                        {...ch} media={{ type: "video", src: "/articles/voice.mp4" }} />
-    <Card title="Always here"                        meta="Chatbot · Presence"         href="/reimagining-the-chatbot"                                     {...ch} media={{ type: "video", src: "/articles/chatbot-always-here.mp4", transform: "scale(2.2) translateX(-12%)" }} />
-    <Card title="Hello Humans"                       meta="Non-software · Analog"      href="/hello-humans"                                                {...ch} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
-    <Card title="Physical AI"                        meta="Research · Embodied"        href="/physical-ai"                slug="physical-ai"               {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png" }} />
-  </>);
-  const selfKnowledgeCards = (<>
-    <Card title="AIOS — seeing your own blindspots"  meta="Prototype · Self-reflection" badge="in progress"                                                {...ch} media={{ type: "concept", icon: "◎", label: "A tool to map the known, unknown, and unknown-unknown.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
-    <Card title="Knowledge graph visualization"      meta="Prototype · Reasoning"      href="/reimagining-the-chatbot"                                     {...ch} media={{ type: "video", src: "/articles/chatbot-knowledge-graph.mp4", transform: "scale(2) translateY(20%)" }} />
-    <Card title="Personalization"                    meta="Research · AI Philosophy"   href="/personalization"            slug="personalization"           {...ch} media={{ type: "image", src: "/articles/personalization-thumb.png" }} />
-    <Card title="Me · Others · Think · Do"           meta="Framework · Quadrant"       href="/think"                                                       {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#fafafa 0%,#efefef 100%)", label: "A 2×2 for mapping where assumptions live versus where behavior happens." }} />
-    <Card title="Design as a research tool"          meta="Case study · Methods"       href="/design-as-a-research-tool"  slug="design-as-a-research-tool" {...ch} media={{ type: "image", src: "/articles/design-as-research-tool-thumb.png" }} />
-  </>);
-  const interpretationCards = (<>
-    <Card title="Conversations that earn trust"      meta="Research · Trust"           href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
-    <Card title="A2UI — Generative UI"               meta="Prototype · Adaptive"       href="/a2ui-generative"            slug="a2ui-generative"           {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", fit: "contain" }} />
-    <Card title="Designing Next-Gen AI Products"     meta="Article · Design systems"   href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
-    <Card title="Proactive prototyping"              meta="Prototype · Testing"        href="/proactive"                  slug="proactive"                 {...ch} media={{ type: "image", src: "/articles/proactive-thumb.png" }} />
-    <Card title="Google Cloud — Conversational AI"   meta="Prototype · 0→1"            href="/google-cloud"               slug="google-cloud"              {...ch} media={{ type: "image", src: "/articles/google-cloud-thumb.png" }} />
-    <Card title="What do prototypes prototype?"      meta="Article · Research method"  href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...ch} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg", fit: "contain" }} />
-  </>);
-  const listeningCards = (<>
-    <Card title="Values from people who shaped how I think" meta="Interactive graph · /listen" href="/listen" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
-    <Card title="Meet the stranger challenge"        meta="Experiment · Connection"    href="https://www.linkedin.com/feed/update/urn:li:activity:7404207024164683776/" isExternal {...ch} media={{ type: "image", src: "/articles/meet-stranger-calendly.png" }} />
-    <Card title="Hosting events @Apple"              meta="Community · IRL"                                                                                {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f5f3ff 0%,#ede9fe 100%)", label: "5 events tracking a year of mental shifts." }} />
-  </>);
 
   return (
     <div className="relative">
@@ -404,91 +375,62 @@ function Index() {
         </div>
       )}
 
-      {/* Dear footer: fixed behind */}
+      {/* Dear footer */}
       <div className="fixed inset-0 z-0 bg-neutral-950"><DearFooter /></div>
 
-      {/*
-        ── SINGLE DIAGRAM OVERLAY ──────────────────────────────────────────
-        position: fixed, always full width.
-        The scroll loop writes directly to diagramInnerRef.style.transform
-        and diagramInnerRef.style.maxWidth — no React re-renders during animation.
-        bgRef opacity 0→1 reveals the left panel background behind the diagram.
-        ────────────────────────────────────────────────────────────────── */}
-      <div style={{
-        position: "fixed", top: NAV_HEIGHT, left: 0, right: 0, bottom: 0,
-        zIndex: 30, pointerEvents: "none", overflow: "hidden",
-      }}>
-        {/* Left panel background fill — opacity animated by scroll loop */}
-        <div ref={bgRef} style={{
-          position: "absolute", left: 0, top: 0, bottom: 0, width: LEFT_W,
-          background: "#fafafa", borderRight: "1px solid #f0f0f0", opacity: 0,
-        }} />
+      {/* Single diagram overlay — scroll loop animates this */}
+      <div style={{ position: "fixed", top: NAV_HEIGHT, left: 0, right: 0, bottom: 0, zIndex: 30, pointerEvents: "none", overflow: "hidden" }}>
+        <div ref={bgRef} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: LEFT_W, background: "#fafafa", borderRight: "1px solid #f0f0f0", opacity: 0 }} />
+        <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "auto" }}>
+          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 600 }}>
 
-        {/* Content layer — pointer-events restored for diagram interaction */}
-        <div style={{
-          position: "relative", zIndex: 1, height: "100%",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          pointerEvents: "auto",
-        }}>
-          {/*
-            diagramInnerRef: this is what the scroll loop moves.
-            translateX: 0 (centered) → -31vw (left panel center)
-            maxWidth: hero size → left panel size
-            All applied imperatively, zero React re-renders.
-          */}
-          <div ref={diagramInnerRef} style={{
-            display: "flex", flexDirection: "column", alignItems: "center",
-            width: "100%", maxWidth: 600, // overwritten by scroll loop
-          }}>
-            {/* Hero header — fades out via scroll loop */}
+            {/* Hero header */}
             <div ref={heroTextRef} style={{ textAlign: "center", marginBottom: "2.5rem", width: "100%" }}>
               <p style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "#a3a3a3", marginBottom: 10 }}>the frame</p>
               <h2 style={{ fontSize: 26, fontWeight: 600, color: "#171717", marginBottom: 10, lineHeight: 1.2 }}>Human interaction has four seams</h2>
-              <p style={{ fontSize: 14, color: "#737373", lineHeight: 1.6, maxWidth: 360, margin: "0 auto" }}>
-                Every exchange runs through them. Somewhere in each one, something gets lost.
-              </p>
+              <p style={{ fontSize: 14, color: "#737373", lineHeight: 1.6, maxWidth: 360, margin: "0 auto" }}>Every exchange runs through them. Somewhere in each one, something gets lost.</p>
             </div>
 
-            {/* THE diagram — one instance, never remounted */}
-            <TwoCirclesDiagram
-              activeSegment={settled ? activeSegment : null}
-              onSegmentClick={handleSegmentClick}
-            />
+            {/* Question title — remounts (key) to trigger CSS animation on each section change */}
+            {settled && activeSection && (
+              <div key={activeSection} className="q-title" style={{ width: "100%", marginBottom: "1.5rem" }}>
+                <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#a3a3a3", marginBottom: 6 }}>
+                  {SECTION_TABS.find(t => t.id === activeSection)?.label}
+                </p>
+                <h3 style={{ fontSize: 17, fontWeight: 600, color: "#171717", lineHeight: 1.35, opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
+                  {SECTION_QUESTIONS[activeSection]}
+                </h3>
+              </div>
+            )}
 
-            {/* Hero scroll hint — fades out */}
+            {/* THE single diagram */}
+            <TwoCirclesDiagram activeSegment={settled ? activeSegment : null} onSegmentClick={handleSegmentClick} />
+
+            {/* Hero hint */}
             <div ref={heroHintRef} style={{ marginTop: "1.5rem", textAlign: "center" }}>
               <p style={{ fontSize: 12, color: "#a3a3a3" }}>click a segment or scroll to explore</p>
             </div>
 
-            {/* Split description — fades in, no pointer-events until visible */}
+            {/* Split description */}
             <div ref={splitDescRef} style={{ marginTop: "2rem", width: "100%", opacity: 0, pointerEvents: "none" }}>
               <p style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "#a3a3a3", marginBottom: 8 }}>my understanding</p>
-              <p style={{ fontSize: 13, color: "#525252", lineHeight: 1.65 }}>
-                Every human interaction runs through four layers — expression, interpretation, response, and how I receive it back. There's always a gap somewhere. That gap is what I explore.
-              </p>
+              <p style={{ fontSize: 13, color: "#525252", lineHeight: 1.65 }}>Every human interaction runs through four layers. There's always a gap — between what I express, how others interpret, what they say back, and how I make sense of it. That gap is what I explore.</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Main content — white layer that scrolls over the Dear footer ── */}
+      {/* Main white content */}
       <div className="relative z-10 bg-background" style={{ boxShadow: "0 0 80px 20px rgba(0,0,0,0.18)" }}>
         <TopNav />
-
-        {/* Hero placeholder — provides scroll space + bg-neutral-50 context */}
         <div style={{ height: `calc(100vh - ${NAV_HEIGHT}px)`, background: "#fafafa" }} />
 
-        {/* Split layout */}
         <div className="flex">
-          {/* Left placeholder — keeps space for the fixed overlay */}
           <div style={{ width: LEFT_W, flexShrink: 0 }} />
 
-          {/* Right panel — fades in once scroll settles */}
-          <div className="flex-1 min-w-0" style={{
-            opacity: settled ? 1 : 0,
-            pointerEvents: settled ? "auto" : "none",
-            transition: "opacity 0.4s ease",
-          }}>
+          {/* Right panel */}
+          <div className="flex-1 min-w-0" style={{ opacity: settled ? 1 : 0, pointerEvents: settled ? "auto" : "none", transition: "opacity 0.4s ease" }}>
+
             {/* Layer 2 nav */}
             <div className="sticky z-30 bg-white/95 backdrop-blur-sm border-b border-neutral-100 px-6" style={{ top: NAV_HEIGHT }}>
               <div className="flex items-center gap-6 py-3.5 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
@@ -496,58 +438,98 @@ function Index() {
                 <div style={{ width: 1, height: 16, background: "#e5e5e5", flexShrink: 0 }} />
                 {SECTION_TABS.map(({ id, label }) => (
                   <button key={id} onClick={() => scrollToSection(id)}
-                    className={["text-sm whitespace-nowrap transition-colors shrink-0",
-                      activeSection === id ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900",
-                    ].join(" ")}>
+                    className={["text-sm whitespace-nowrap transition-colors shrink-0", activeSection === id ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>
                     {label}
                   </button>
                 ))}
               </div>
             </div>
 
+            {/* ── 01 New ways to express ── */}
             <section id="expression" className="px-6 pt-10 pb-12 scroll-mt-24">
               <div className="mb-7 flex items-start justify-between gap-4">
-                <div><h2 className="text-xl font-semibold text-neutral-900">New ways to express</h2><p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">If interfaces weren't limited to text fields, how might humans convey presence, emotion, and intent?</p></div>
+                <div>
+                  <h2 className="text-xl font-semibold text-neutral-900">New ways to express</h2>
+                  <p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">If interfaces weren't limited to text, how might humans convey presence, emotion, and intent?</p>
+                </div>
                 <a href="/play" className="shrink-0 text-sm text-neutral-400 hover:text-neutral-900 transition-colors whitespace-nowrap mt-0.5">See all →</a>
               </div>
-              <div className="grid grid-cols-2 gap-5">{expressionCards}</div>
+              <div className="grid grid-cols-2 gap-5">
+                <Card title="Hand gesture interactions" meta="Vibe-coding · Embodied" href="/play" {...ch} media={{ type: "video", src: "/articles/hand-gesture.mp4" }} />
+                <Card title="Voice interaction" meta="Vibe-coding · Voice" href="/play" {...ch} media={{ type: "video", src: "/articles/voice.mp4" }} />
+                <Card title="Palo Alto moment" meta="Vibe-coding · Place & context" href="/play" {...ch} media={{ type: "video", src: "/articles/palo-alto.mp4" }} />
+                <Card title="Reimagining the chatbot" meta="Prototype · Collection" href="/reimagining-the-chatbot" slug="reimagining-the-chatbot" {...ch} media={{ type: "image", src: "/articles/chatbot-thumb.png" }} />
+              </div>
             </section>
 
             <div className="mx-6 border-t border-neutral-100" />
 
-            <section id="self-knowledge" className="px-6 pt-10 pb-12 scroll-mt-24">
+            {/* ── 02 How others think ── */}
+            <section id="others-think" className="px-6 pt-10 pb-12 scroll-mt-24">
               <div className="mb-7 flex items-start justify-between gap-4">
-                <div><h2 className="text-xl font-semibold text-neutral-900">Knowing your unknowns</h2><p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">How can technology help someone discover what they don't know — or that they don't know it?</p></div>
+                <div>
+                  <h2 className="text-xl font-semibold text-neutral-900">How others think</h2>
+                  <p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">How do you understand what's inside someone else's head — whether that someone is human or AI?</p>
+                </div>
                 <a href="/think" className="shrink-0 text-sm text-neutral-400 hover:text-neutral-900 transition-colors whitespace-nowrap mt-0.5">See frameworks →</a>
               </div>
-              <div className="grid grid-cols-2 gap-5">{selfKnowledgeCards}</div>
-            </section>
+              <div className="grid grid-cols-2 gap-5">
+                <GroupLabel label="others = human" />
+                <Card title="Design as a research tool" meta="Case study · Service design" href="/design-as-a-research-tool" slug="design-as-a-research-tool" {...ch} media={{ type: "image", src: "/articles/design-as-research-tool-thumb.png" }} />
+                <Card title="Meet the stranger challenge" meta="Experiment · Connection" href="https://www.linkedin.com/feed/update/urn:li:activity:7404207024164683776/" isExternal {...ch} media={{ type: "image", src: "/articles/meet-stranger-calendly.png" }} />
+                <Card title="Thinking frameworks" meta="Models · /reflect" href="/think" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#fafafa 0%,#efefef 100%)", label: "Mental models for understanding how people think — analysis-synthesis, 2×2 quadrant, double diamond." }} />
 
-            <div className="mx-6 border-t border-neutral-100" />
-
-            <section id="interpretation" className="px-6 pt-10 pb-12 scroll-mt-24">
-              <div className="mb-7"><h2 className="text-xl font-semibold text-neutral-900">When meaning gets lost</h2><p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">The same message lands differently for everyone. How might design work with that gap?</p></div>
-              <div className="grid grid-cols-2 gap-5">{interpretationCards}</div>
-            </section>
-
-            <div className="mx-6 border-t border-neutral-100" />
-
-            <section id="listening" className="px-6 pt-10 pb-12 scroll-mt-24">
-              <div className="mb-7 flex items-start justify-between gap-4">
-                <div><h2 className="text-xl font-semibold text-neutral-900">What others bring</h2><p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">What happens when you create conditions for people to be genuinely honest — and you actually listen?</p></div>
-                <a href="/listen" className="shrink-0 text-sm text-neutral-400 hover:text-neutral-900 transition-colors whitespace-nowrap mt-0.5">Open the graph →</a>
+                <GroupLabel label="others = AI" />
+                <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png" }} />
+                <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.png" }} />
+                <Card title="Personalization" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.png" }} />
+                <Card title="Designing Next-Gen AI Products" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
               </div>
-              <div className="grid grid-cols-2 gap-5">{listeningCards}</div>
             </section>
 
-            <div className="px-6 pb-10 pt-4 text-center text-xs text-neutral-400">
-              © 2026 — sketched with fountain pen & paper
-            </div>
+            <div className="mx-6 border-t border-neutral-100" />
+
+            {/* ── 03 What others say ── */}
+            <section id="others-say" className="px-6 pt-10 pb-12 scroll-mt-24">
+              <div className="mb-7 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-neutral-900">What others say</h2>
+                  <p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">What does it sound like when others respond — and how do you design that response to be honest, useful, or surprising?</p>
+                </div>
+                <a href="/listen" className="shrink-0 text-sm text-neutral-400 hover:text-neutral-900 transition-colors whitespace-nowrap mt-0.5">Listen →</a>
+              </div>
+              <div className="grid grid-cols-2 gap-5">
+                <GroupLabel label="others = human" />
+                <Card title="Hello Humans" meta="Non-software · Analog" href="/hello-humans" {...ch} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
+                <Card title="Voices that shaped how I think" meta="Interactive graph · /listen" href="/listen" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
+
+                <GroupLabel label="others = AI" />
+                <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", fit: "contain" }} />
+                <Card title="Google Cloud — Conversational AI" meta="Prototype · 0→1" href="/google-cloud" slug="google-cloud" {...ch} media={{ type: "image", src: "/articles/google-cloud-thumb.png" }} />
+                <Card title="Conversations that earn trust" meta="Research · Conversation design" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
+              </div>
+            </section>
+
+            <div className="mx-6 border-t border-neutral-100" />
+
+            {/* ── 04 I interpret ── */}
+            <section id="i-interpret" className="px-6 pt-10 pb-12 scroll-mt-24">
+              <div className="mb-7">
+                <h2 className="text-xl font-semibold text-neutral-900">I interpret</h2>
+                <p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">After everything lands — what do I actually make of it? And do I know what I want?</p>
+              </div>
+              <div className="grid grid-cols-2 gap-5">
+                <Card title="AIOS — seeing your own blindspots" meta="Prototype · Self-reflection" badge="in progress" {...ch} media={{ type: "concept", icon: "◎", label: "A personal OS for mapping what I know, don't know, and don't know I don't know.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
+                <Card title="AI-supported journaling" meta="Concept · Self-understanding" badge="coming soon" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f5f5f0 0%,#e8e8e0 100%)", label: "Using AI to surface patterns in how I interpret the world and what I actually want." }} />
+                <Card title="Reflection frameworks" meta="Models · /reflect" href="/think" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f0f4ff 0%,#e4eaff 100%)", label: "The mental models I use to interpret what I experience — quadrants, bridges, blueprints." }} />
+              </div>
+            </section>
+
+            <div className="px-6 pb-10 pt-4 text-center text-xs text-neutral-400">© 2026 — sketched with fountain pen & paper</div>
           </div>
         </div>
       </div>
 
-      {/* Transparent spacer — Dear footer shows through */}
       <div className="h-screen" />
     </div>
   );
