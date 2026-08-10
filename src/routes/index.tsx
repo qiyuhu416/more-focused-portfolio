@@ -7,8 +7,33 @@ import { NAV_ITEMS, navHref } from "./-navItems";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Qiyu — Human Interaction" },
-      { name: "description", content: "Prototypes and explorations at the edges of human interaction." },
+      { title: "Qiyu Hu — Human Interaction Designer" },
+      {
+        name: "description",
+        content:
+          "Qiyu Hu is a designer-engineer at Apple exploring the edges of human interaction — AI products, voice, gesture, and trust.",
+      },
+      { name: "author", content: "Qiyu Hu" },
+      { property: "og:title", content: "Qiyu Hu — Human Interaction Designer" },
+      {
+        property: "og:description",
+        content:
+          "Qiyu Hu is a designer-engineer at Apple exploring the edges of human interaction — AI products, voice, gesture, and trust.",
+      },
+      { property: "og:type", content: "website" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Person",
+          name: "Qiyu Hu",
+          jobTitle: "Human Interaction Designer",
+          worksFor: { "@type": "Organization", name: "Apple" },
+          sameAs: ["https://www.linkedin.com/in/qiyu-hu/"],
+        }),
+      },
     ],
   }),
   component: Index,
@@ -221,7 +246,7 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
         {media.type === "image" && <img src={media.src} alt={title} className={`h-full w-full ${media.fit === "contain" ? "object-contain p-6" : "object-cover"}`} />}
         {media.type === "concept" && (
           <div className="h-full w-full flex flex-col items-center justify-center gap-3 px-8 py-6" style={{ background: media.gradient ?? "linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%)" }}>
-            {media.icon && <span className="text-3xl">{media.icon}</span>}
+            {media.icon && <span className="text-lg">{media.icon}</span>}
             {media.label && <p className="text-xs text-neutral-500 text-center leading-relaxed">{media.label}</p>}
           </div>
         )}
@@ -239,17 +264,6 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
 
 // ── Sub-group divider ─────────────────────────────────────────────────────
 
-function GroupLabel({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-3 mt-4 mb-1">
-      <span style={{ fontSize: 10, color: "#c4c4c4", letterSpacing: "0.12em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</span>
-      <div style={{ flex: 1, height: 1, background: "#f0f0f0" }} />
-    </div>
-  );
-}
-
-// ── Index ─────────────────────────────────────────────────────────────────
-
 function TopNav() {
   return (
     <header className="sticky top-0 z-50 flex items-center px-8 bg-white/95 backdrop-blur-sm border-b border-neutral-100" style={{ height: NAV_HEIGHT }}>
@@ -262,6 +276,17 @@ function TopNav() {
     </header>
   );
 }
+
+function GroupLabel({ label }: { label: string }) {
+  return (
+    <div className="col-span-2 flex items-center gap-3 mt-4 mb-1">
+      <span style={{ fontSize: 10, color: "#c4c4c4", letterSpacing: "0.12em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: "#f0f0f0" }} />
+    </div>
+  );
+}
+
+// ── Index ─────────────────────────────────────────────────────────────────
 
 function Index() {
   const bgRef           = useRef<HTMLDivElement>(null);
@@ -386,18 +411,14 @@ function Index() {
 
             {/* Hero header */}
             <div ref={heroTextRef} style={{ textAlign: "center", marginBottom: "2.5rem", width: "100%" }}>
-              <p style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "#a3a3a3", marginBottom: 10 }}>the frame</p>
-              <h2 style={{ fontSize: 26, fontWeight: 600, color: "#171717", marginBottom: 10, lineHeight: 1.2 }}>Human interaction has four seams</h2>
-              <p style={{ fontSize: 14, color: "#737373", lineHeight: 1.6, maxWidth: 360, margin: "0 auto" }}>Every exchange runs through them. Somewhere in each one, something gets lost.</p>
+              <h2 style={{ fontSize: 28, fontWeight: 600, color: "#171717", marginBottom: 12, lineHeight: 1.2 }}>Something always gets lost.</h2>
+              <p style={{ fontSize: 14, color: "#737373", lineHeight: 1.6, maxWidth: 340, margin: "0 auto" }}>I design at the four places it happens.</p>
             </div>
 
-            {/* Question title — remounts (key) to trigger CSS animation on each section change */}
+            {/* Question title — bigger, no sub-label, serves as section heading */}
             {settled && activeSection && (
-              <div key={activeSection} className="q-title" style={{ width: "100%", marginBottom: "1.5rem" }}>
-                <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#a3a3a3", marginBottom: 6 }}>
-                  {SECTION_TABS.find(t => t.id === activeSection)?.label}
-                </p>
-                <h3 style={{ fontSize: 17, fontWeight: 600, color: "#171717", lineHeight: 1.35, opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
+              <div key={activeSection} className="q-title" style={{ width: "100%", marginBottom: "2rem" }}>
+                <h3 style={{ fontSize: 22, fontWeight: 600, color: "#171717", lineHeight: 1.3, opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
                   {SECTION_QUESTIONS[activeSection]}
                 </h3>
               </div>
@@ -408,21 +429,18 @@ function Index() {
 
             {/* Hero hint */}
             <div ref={heroHintRef} style={{ marginTop: "1.5rem", textAlign: "center" }}>
-              <p style={{ fontSize: 12, color: "#a3a3a3" }}>click a segment or scroll to explore</p>
+              <svg width="14" height="18" viewBox="0 0 14 18" fill="none" style={{ opacity: 0.35, margin: "0 auto" }}><path d="M7 1v16M7 17l-5-5M7 17l5-5" stroke="#a3a3a3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
 
-            {/* Split description */}
-            <div ref={splitDescRef} style={{ marginTop: "2rem", width: "100%", opacity: 0, pointerEvents: "none" }}>
-              <p style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "#a3a3a3", marginBottom: 8 }}>my understanding</p>
-              <p style={{ fontSize: 13, color: "#525252", lineHeight: 1.65 }}>Every human interaction runs through four layers. There's always a gap — between what I express, how others interpret, what they say back, and how I make sense of it. That gap is what I explore.</p>
-            </div>
+            {/* Split description removed — question title above serves as the only label */}
+            <div ref={splitDescRef} style={{ display: "none" }} />
           </div>
         </div>
       </div>
 
       {/* Main white content */}
       <div className="relative z-10 bg-background" style={{ boxShadow: "0 0 80px 20px rgba(0,0,0,0.18)" }}>
-        <TopNav />
+        <SiteNav active="work" />
         <div style={{ height: `calc(100vh - ${NAV_HEIGHT}px)`, background: "#fafafa" }} />
 
         <div className="flex">
@@ -434,9 +452,7 @@ function Index() {
             {/* Layer 2 nav */}
             <div className="sticky z-30 bg-white/95 backdrop-blur-sm border-b border-neutral-100 px-6" style={{ top: NAV_HEIGHT }}>
               <div className="flex items-center gap-6 py-3.5 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
-                <span style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "#d4d4d4", whiteSpace: "nowrap" }}>using tech to explore</span>
-                <div style={{ width: 1, height: 16, background: "#e5e5e5", flexShrink: 0 }} />
-                {SECTION_TABS.map(({ id, label }) => (
+                                {SECTION_TABS.map(({ id, label }) => (
                   <button key={id} onClick={() => scrollToSection(id)}
                     className={["text-sm whitespace-nowrap transition-colors shrink-0", activeSection === id ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>
                     {label}
@@ -446,13 +462,9 @@ function Index() {
             </div>
 
             {/* ── 01 New ways to express ── */}
-            <section id="expression" className="px-6 pt-10 pb-12 scroll-mt-24">
-              <div className="mb-7 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-neutral-900">New ways to express</h2>
-                  <p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">If interfaces weren't limited to text, how might humans convey presence, emotion, and intent?</p>
-                </div>
-                <a href="/play" className="shrink-0 text-sm text-neutral-400 hover:text-neutral-900 transition-colors whitespace-nowrap mt-0.5">See all →</a>
+            <section id="expression" className="px-6 pt-8 pb-12 scroll-mt-24">
+              <div className="flex justify-end mb-5">
+                <a href="/play" className="text-sm text-neutral-400 hover:text-neutral-900 transition-colors">See all →</a>
               </div>
               <div className="grid grid-cols-2 gap-5">
                 <Card title="Hand gesture interactions" meta="Vibe-coding · Embodied" href="/play" {...ch} media={{ type: "video", src: "/articles/hand-gesture.mp4" }} />
@@ -465,13 +477,9 @@ function Index() {
             <div className="mx-6 border-t border-neutral-100" />
 
             {/* ── 02 How others think ── */}
-            <section id="others-think" className="px-6 pt-10 pb-12 scroll-mt-24">
-              <div className="mb-7 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-neutral-900">How others think</h2>
-                  <p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">How do you understand what's inside someone else's head — whether that someone is human or AI?</p>
-                </div>
-                <a href="/think" className="shrink-0 text-sm text-neutral-400 hover:text-neutral-900 transition-colors whitespace-nowrap mt-0.5">See frameworks →</a>
+            <section id="others-think" className="px-6 pt-8 pb-12 scroll-mt-24">
+              <div className="flex justify-end mb-5">
+                <a href="/think" className="text-sm text-neutral-400 hover:text-neutral-900 transition-colors">See frameworks →</a>
               </div>
               <div className="grid grid-cols-2 gap-5">
                 <GroupLabel label="others = human" />
@@ -490,13 +498,9 @@ function Index() {
             <div className="mx-6 border-t border-neutral-100" />
 
             {/* ── 03 What others say ── */}
-            <section id="others-say" className="px-6 pt-10 pb-12 scroll-mt-24">
-              <div className="mb-7 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-neutral-900">What others say</h2>
-                  <p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">What does it sound like when others respond — and how do you design that response to be honest, useful, or surprising?</p>
-                </div>
-                <a href="/listen" className="shrink-0 text-sm text-neutral-400 hover:text-neutral-900 transition-colors whitespace-nowrap mt-0.5">Listen →</a>
+            <section id="others-say" className="px-6 pt-8 pb-12 scroll-mt-24">
+              <div className="flex justify-end mb-5">
+                <a href="/listen" className="text-sm text-neutral-400 hover:text-neutral-900 transition-colors">Listen →</a>
               </div>
               <div className="grid grid-cols-2 gap-5">
                 <GroupLabel label="others = human" />
@@ -513,11 +517,7 @@ function Index() {
             <div className="mx-6 border-t border-neutral-100" />
 
             {/* ── 04 I interpret ── */}
-            <section id="i-interpret" className="px-6 pt-10 pb-12 scroll-mt-24">
-              <div className="mb-7">
-                <h2 className="text-xl font-semibold text-neutral-900">I interpret</h2>
-                <p className="mt-1 text-sm text-neutral-500 max-w-sm leading-relaxed">After everything lands — what do I actually make of it? And do I know what I want?</p>
-              </div>
+            <section id="i-interpret" className="px-6 pt-8 pb-12 scroll-mt-24">
               <div className="grid grid-cols-2 gap-5">
                 <Card title="AIOS — seeing your own blindspots" meta="Prototype · Self-reflection" badge="in progress" {...ch} media={{ type: "concept", icon: "◎", label: "A personal OS for mapping what I know, don't know, and don't know I don't know.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
                 <Card title="AI-supported journaling" meta="Concept · Self-understanding" badge="coming soon" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f5f5f0 0%,#e8e8e0 100%)", label: "Using AI to surface patterns in how I interpret the world and what I actually want." }} />
