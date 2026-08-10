@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import { CardIcon } from "./-CardIcon";
 import { ARTICLE_META } from "./-articleMeta";
-import { NAV_ITEMS, navHref } from "./-navItems";
+import { NAV_ITEMS, navHref } from "./-navItems"; // kept — TopNav below references these as fallback
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -221,7 +221,7 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick }: {
     <g onMouseEnter={() => setHovered(id)} onMouseLeave={() => setHovered(null)} onClick={() => onSegmentClick?.(id)}>{children}</g>
   );
   return (
-    <svg viewBox="0 0 640 230" fill="none" className="w-full" style={{ overflow: "visible" }}>
+    <svg viewBox="0 0 640 230" fill="none" className="w-full" style={{ overflow: "visible", minWidth: 0, maxWidth: "100%" }}>
       <circle cx="110" cy="115" r="50" stroke={cs} strokeWidth="1.5" style={{ transition: "stroke 160ms" }} />
       <text x="110" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ transition: "fill 160ms" }}>me</text>
       <circle cx="530" cy="115" r="50" stroke={cs} strokeWidth="1.5" style={{ transition: "stroke 160ms" }} />
@@ -277,7 +277,7 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
       {badge && <span className="absolute top-5 right-5 z-10 rounded-full bg-neutral-900/80 px-2.5 py-1 text-[10px] uppercase tracking-wide text-white backdrop-blur-sm">{badge}</span>}
       <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-white">
         {media.type === "video" && <video src={`${media.src}#t=0.001`} preload="metadata" muted loop playsInline className="h-full w-full object-cover" style={media.transform ? { transform: media.transform } : undefined} />}
-        {media.type === "image" && <img src={media.src} alt={title} className={`h-full w-full ${media.fit === "contain" ? "object-contain p-6" : "object-cover"}`} />}
+        {media.type === "image" && <img src={media.src} alt={title} className={media.fit === "contain" ? "object-contain" : "h-full w-full object-cover"} style={media.fit === "contain" ? { width: "40%", height: "auto" } : undefined} />}
         {media.type === "concept" && (
           <div className="h-full w-full flex flex-col items-center justify-center gap-3 px-8 py-6" style={{ background: media.gradient ?? "linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%)" }}>
             {media.icon && <span style={{ fontSize: 52 }}>{media.icon}</span>}
@@ -299,14 +299,11 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
 // ── Sub-group divider ─────────────────────────────────────────────────────
 
 function TopNav() {
+
   return (
     <header className="sticky top-0 z-50 flex items-center px-8 bg-white/95 backdrop-blur-sm border-b border-neutral-100" style={{ height: NAV_HEIGHT }}>
       <Link to="/" className="text-[15px] font-semibold tracking-tight text-neutral-900 mr-auto">Qiyu</Link>
-      <nav className="flex items-center gap-8">
-        {NAV_ITEMS.map((l) => (
-          <Link key={l} to={navHref(l)} className={["text-sm transition-colors", l === "work" ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>{l}</Link>
-        ))}
-      </nav>
+      <nav className="flex items-center gap-8">{NAV_ITEMS.map((l) => (<Link key={l} to={navHref(l)} className={["text-sm transition-colors", l === "work" ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>{l}</Link>))}</nav>
     </header>
   );
 }
@@ -457,12 +454,12 @@ function Index() {
             Only diagramInnerRef (which sits in the left panel in split mode)
             has pointerEvents: auto — it's the only interactive element here. */}
         <div ref={contentWrapperRef} style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 600, pointerEvents: "auto" }}>
+          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 600, pointerEvents: "auto", overflow: "hidden" }}>
 
             {/* Hero header */}
             <div ref={heroTextRef} style={{ textAlign: "center", marginBottom: "2.5rem", width: "100%" }}>
               <h2 style={{ fontSize: 32, fontWeight: 600, color: "#171717", marginBottom: 12, lineHeight: 1.15, letterSpacing: "-0.01em" }}>Hello Humans.</h2>
-              <p style={{ fontSize: 15, color: "#737373", lineHeight: 1.65, maxWidth: 380, margin: "0 auto" }}>How can we empower human-human interaction with AI?</p>
+              <p style={{ fontSize: 15, color: "#737373", lineHeight: 1.65 }}>Qiyu is exploring technology that brings people closer.</p>
             </div>
 
             {/* Question title — centered, appears when settled, re-animates on section change */}
@@ -533,8 +530,8 @@ function Index() {
 
                 <GroupLabel label="others = AI" />
                 <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png" }} />
-                <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.png" }} />
-                <Card title="Personalization" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.png" }} />
+                <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.svg", fit: "contain" }} />
+                <Card title="Personalization" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.svg", fit: "contain" }} />
                 <Card title="Designing Next-Gen AI Products" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
               </div>
             </section>
