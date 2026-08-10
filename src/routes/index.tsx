@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback, type ReactNode } from "react"
 import { CardIcon } from "./-CardIcon";
 import { ARTICLE_META } from "./-articleMeta";
 import { NAV_ITEMS, navHref } from "./-navItems";
+import { SiteNav } from "./-SiteNav";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -303,16 +304,18 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
 
 // ── Sub-group divider ─────────────────────────────────────────────────────
 
-function TopNav() {
+function TopNav({ visible }: { visible: boolean }) {
+  void NAV_ITEMS; void navHref;
   return (
-    <header className="sticky top-0 z-50 flex items-center px-8 bg-white/95 backdrop-blur-sm border-b border-neutral-100" style={{ height: NAV_HEIGHT }}>
-      <Link to="/" className="text-[15px] font-semibold tracking-tight text-neutral-900 mr-auto">Qiyu</Link>
-      <nav className="flex items-center gap-8">
-        {NAV_ITEMS.map((l) => (
-          <Link key={l} to={navHref(l)} className={["text-sm transition-colors", l === "work" ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>{l}</Link>
-        ))}
-      </nav>
-    </header>
+    <SiteNav
+      active="work"
+      headerProps={{
+        style: {
+          transform: visible ? "translateY(0)" : `translateY(-${NAV_HEIGHT}px)`,
+          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        },
+      }}
+    />
   );
 }
 
@@ -320,7 +323,7 @@ function GroupLabel({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-3 mt-4 mb-1">
       <span style={{ fontSize: 10, color: "#c4c4c4", letterSpacing: "0.12em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</span>
-      <div style={{ flex: 1, height: 1, background: "#f0f0f0" }} />
+      <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.08)" }} />
     </div>
   );
 }
@@ -336,10 +339,13 @@ function Index() {
   const footerSpacerRef = useRef<HTMLDivElement>(null);
   const settledRef      = useRef(false);
 
+  const lastScrollY = useRef(0);
+
   const [settled, setSettled]                 = useState(false);
   const [activeSection, setActiveSection]     = useState<string | null>(null);
   const [atFooter, setAtFooter]               = useState(false);
   const [questionVisible, setQuestionVisible] = useState(true);
+  const [navVisible, setNavVisible]           = useState(true);
   const [cursorPos, setCursorPos]             = useState({ x: 0, y: 0 });
   const [hoveredSlug, setHoveredSlug]         = useState<string | null>(null);
 
@@ -384,13 +390,18 @@ function Index() {
         diagramInnerRef.current.style.transform = `translateX(calc(${-31 * p}vw))`;
       }
       if (bgRef.current) bgRef.current.style.opacity = String(p);
-      const ho = String(Math.max(0, 1 - p / 0.4));
-      if (heroTextRef.current) heroTextRef.current.style.opacity = ho;
-      if (heroHintRef.current) heroHintRef.current.style.opacity = ho;
+      const ho = Math.max(0, 1 - p / 0.4);
+      if (heroTextRef.current) {
+        heroTextRef.current.style.opacity      = String(ho);
+        heroTextRef.current.style.maxHeight    = p >= 1 ? "0"     : "200px";
+        heroTextRef.current.style.overflow     = "hidden";
+        heroTextRef.current.style.marginBottom = p >= 1 ? "0"     : "2.5rem";
+      }
+      if (heroHintRef.current) heroHintRef.current.style.opacity = String(ho);
       // Shift content wrapper from vertically-centered → top-aligned as we settle
+      // justifyContent must stay "center" — translateX handles horizontal positioning
       if (contentWrapperRef.current) {
         contentWrapperRef.current.style.alignItems     = p > 0.5 ? "flex-start" : "center";
-        contentWrapperRef.current.style.justifyContent = p > 0.5 ? "flex-start" : "center";
         contentWrapperRef.current.style.paddingTop     = p > 0.5 ? `${Math.min(4, (p - 0.5) / 0.5 * 4)}rem` : "0";
       }
       const now = raw >= 1;
@@ -400,6 +411,20 @@ function Index() {
     window.addEventListener("scroll", onScroll, { passive: true });
     tick();
     return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, []);
+
+  // Nav hide-on-scroll-down, show-on-scroll-up
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      const dy = y - lastScrollY.current;
+      if (y <= 10) setNavVisible(true);
+      else if (dy > 6) setNavVisible(false);
+      else if (dy < -6) setNavVisible(true);
+      lastScrollY.current = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   // Active section via IntersectionObserver
@@ -470,12 +495,12 @@ function Index() {
               <p style={{ fontSize: 15, color: "#737373", lineHeight: 1.65 }}>Qiyu is exploring technology that brings people closer.</p>
             </div>
 
-            {/* Question title — centered, appears when settled, re-animates on section change */}
+            {/* Question title — page-heading size, left-aligned, appears when settled */}
             {settled && activeSection && (
-              <div key={activeSection} className="q-title" style={{ width: "100%", marginBottom: "1.5rem", textAlign: "center" }}>
-                <h3 style={{ fontSize: 22, fontWeight: 600, color: "#171717", lineHeight: 1.3, opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
+              <div key={activeSection} className="q-title" style={{ width: "100%", marginBottom: "1.5rem", textAlign: "left" }}>
+                <h2 style={{ fontSize: 30, fontWeight: 600, color: "#171717", lineHeight: 1.2, letterSpacing: "-0.01em", opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
                   {SECTION_QUESTIONS[activeSection]}
-                </h3>
+                </h2>
               </div>
             )}
 
@@ -508,27 +533,28 @@ function Index() {
           <div style={{ width: LEFT_W, flexShrink: 0 }} />
 
           {/* Right panel */}
-          <div className="flex-1 min-w-0" style={{ opacity: settled ? 1 : 0, pointerEvents: settled ? "auto" : "none", transition: "opacity 0.4s ease" }}>
+          <div className="flex-1 min-w-0 bg-neutral-950" style={{ opacity: settled ? 1 : 0, pointerEvents: settled ? "auto" : "none", transition: "opacity 0.4s ease" }}>
 
             {/* ── 01 New ways to express ── */}
             <section id="expression" className="px-6 pt-8 pb-12 scroll-mt-24">
               <div className="flex justify-end mb-5">
-                <a href="/play" className="text-sm text-neutral-400 hover:text-neutral-900 transition-colors">See all →</a>
+                <a href="/play" className="text-sm text-neutral-400 hover:text-white transition-colors">See all →</a>
               </div>
               <div className="grid grid-cols-2 gap-5">
                 <Card title="Hand gesture interactions" meta="Vibe-coding · Embodied" href="/play" {...ch} media={{ type: "video", src: "/articles/hand-gesture.mp4" }} />
                 <Card title="Voice interaction" meta="Vibe-coding · Voice" href="/play" {...ch} media={{ type: "video", src: "/articles/voice.mp4" }} />
                 <Card title="Palo Alto moment" meta="Vibe-coding · Place & context" href="/play" {...ch} media={{ type: "video", src: "/articles/palo-alto.mp4" }} />
                 <Card title="Reimagining the chatbot" meta="Prototype · Collection" href="/reimagining-the-chatbot" slug="reimagining-the-chatbot" {...ch} media={{ type: "image", src: "/articles/chatbot-thumb.png", thumbnailSize: "medium" }} />
+                <Card title="Product launch from 0–1" meta="Case study · 0→1" href="/product-launch-from-0-1" slug="product-launch-from-0-1" {...ch} media={{ type: "image", src: "/articles/product-launch-thumb.png" }} />
               </div>
             </section>
 
-            <div className="mx-6 border-t border-neutral-100" />
+            <div className="mx-6 border-t border-neutral-800" />
 
             {/* ── 02 How others think ── */}
             <section id="others-think" className="px-6 pt-8 pb-12 scroll-mt-24">
               <div className="flex justify-end mb-5">
-                <a href="/think" className="text-sm text-neutral-400 hover:text-neutral-900 transition-colors">See frameworks →</a>
+                <a href="/think" className="text-sm text-neutral-400 hover:text-white transition-colors">See frameworks →</a>
               </div>
               <div className="grid grid-cols-2 gap-5">
                 <GroupLabel label="others = human" />
@@ -544,17 +570,18 @@ function Index() {
               </div>
             </section>
 
-            <div className="mx-6 border-t border-neutral-100" />
+            <div className="mx-6 border-t border-neutral-800" />
 
             {/* ── 03 What others say ── */}
             <section id="others-say" className="px-6 pt-8 pb-12 scroll-mt-24">
               <div className="flex justify-end mb-5">
-                <a href="/listen" className="text-sm text-neutral-400 hover:text-neutral-900 transition-colors">Listen →</a>
+                <a href="/listen" className="text-sm text-neutral-400 hover:text-white transition-colors">Listen →</a>
               </div>
               <div className="grid grid-cols-2 gap-5">
                 <GroupLabel label="others = human" />
                 <Card title="Hello Humans" meta="Non-software · Analog" href="/hello-humans" {...ch} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
                 <Card title="Voices that shaped how I think" meta="Interactive graph · /listen" href="/listen" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
+                <Card title="Human-AI relationship research" meta="Research · Collaboration" href="/human-ai-research" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f0f4f8 0%,#dde6f0 100%)", label: "Exploring the evolving nature of human-AI collaboration and what it means for how we relate." }} />
 
                 <GroupLabel label="others = AI" />
                 <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", thumbnailSize: "small" }} />
@@ -563,18 +590,20 @@ function Index() {
               </div>
             </section>
 
-            <div className="mx-6 border-t border-neutral-100" />
+            <div className="mx-6 border-t border-neutral-800" />
 
             {/* ── 04 I interpret ── */}
             <section id="i-interpret" className="px-6 pt-8 pb-12 scroll-mt-24">
               <div className="grid grid-cols-2 gap-5">
                 <Card title="AIOS — seeing your own blindspots" meta="Prototype · Self-reflection" badge="in progress" {...ch} media={{ type: "concept", icon: "◎", label: "A personal OS for mapping what I know, don't know, and don't know I don't know.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
                 <Card title="AI-supported journaling" meta="Concept · Self-understanding" badge="coming soon" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f5f5f0 0%,#e8e8e0 100%)", label: "Using AI to surface patterns in how I interpret the world and what I actually want." }} />
+                <Card title="How Claude is shaping how I think" meta="Research · Tools" href="/claude-code-research" slug="claude-code-research" {...ch} media={{ type: "image", src: "/articles/claude-code-thumb.png", thumbnailSize: "small" }} />
+                <Card title="What do prototypes prototype?" meta="Article · Method" href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...ch} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg", thumbnailSize: "medium" }} />
                 <Card title="Reflection frameworks" meta="Models · /reflect" href="/think" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f0f4ff 0%,#e4eaff 100%)", label: "The mental models I use to interpret what I experience — quadrants, bridges, blueprints." }} />
               </div>
             </section>
 
-            <div className="px-6 pb-10 pt-4 text-center text-xs text-neutral-400">© 2026 — sketched with fountain pen & paper</div>
+            <div className="px-6 pb-10 pt-4 text-center text-xs text-neutral-600">© 2026 — sketched with fountain pen & paper</div>
           </div>
         </div>
       </div>
