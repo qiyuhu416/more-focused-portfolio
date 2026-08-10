@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import rough from "roughjs";
 import { CardIcon } from "./-CardIcon";
 import { ARTICLE_META } from "./-articleMeta";
 import { NAV_ITEMS, navHref } from "./-navItems";
@@ -263,84 +264,38 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI, hideLabe
 
 interface CardModalData { href: string; title: string; meta: string; media: CardMedia; }
 
+// Centered iframe modal — SiteNav hides itself when ?embed=1 is in the URL.
+// No extra buttons: just the real article content + a close (×) button.
 function ArticleModal({ card, onClose }: { card: CardModalData; onClose: () => void }) {
-  const [expanded, setExpanded] = useState(false);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const slug = card.href.replace(/^\//, "");
-  const sections = ARTICLE_META[slug]?.sections ?? [];
-
-  useEffect(() => {
-    const el = bodyRef.current; if (!el) return;
-    const onScroll = () => { if (el.scrollTop > 20) setExpanded(true); };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
   }, [onClose]);
+
+  const embedUrl = `${card.href}${card.href.includes("?") ? "&" : "?"}embed=1`;
 
   return (
     <>
-      <div className="fixed inset-0 z-[59] bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-[59] bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="fixed inset-x-0 bottom-0 z-[60] bg-white shadow-2xl"
-        style={{
-          height: expanded ? "100vh" : "72vh",
-          borderRadius: expanded ? 0 : "24px 24px 0 0",
-          transition: "height 0.45s cubic-bezier(0.32, 0.72, 0, 1), border-radius 0.45s ease",
-        }}
+        className="fixed z-[60] inset-x-4 inset-y-6 md:inset-x-[8%] md:inset-y-[5%] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ animation: "modalIn 0.22s cubic-bezier(0.25,0.46,0.45,0.94)" }}
       >
-        {!expanded && (
-          <div className="absolute top-2.5 inset-x-0 flex justify-center pointer-events-none">
-            <div className="w-10 h-1 rounded-full bg-neutral-200" />
-          </div>
-        )}
-
-        <div className="flex items-start justify-between px-7 pt-7 pb-5 border-b border-neutral-100">
-          <div>
-            <p className="text-xs text-neutral-400 mb-1">{card.meta}</p>
-            <h2 className="text-xl font-semibold text-neutral-900 leading-snug max-w-sm">{card.title}</h2>
-          </div>
-          <button onClick={onClose} className="ml-4 mt-0.5 text-2xl leading-none text-neutral-300 hover:text-neutral-900 transition-colors shrink-0">×</button>
-        </div>
-
-        <div ref={bodyRef} className="overflow-y-auto" style={{ height: "calc(100% - 90px)" }}>
-          <div className="px-7 pt-5">
-            {card.media.type === "image" && (
-              <img src={card.media.src} alt={card.title} className="w-full rounded-2xl object-cover max-h-56" />
-            )}
-            {card.media.type === "video" && (
-              <video src={`${card.media.src}#t=0.001`} preload="metadata" muted playsInline className="w-full rounded-2xl object-cover max-h-56" />
-            )}
-            {card.media.type === "concept" && (
-              <div className="w-full h-40 rounded-2xl flex items-center justify-center" style={{ background: card.media.gradient ?? "linear-gradient(135deg,#f5f5f5,#e8e8e8)" }}>
-                {card.media.icon && <span style={{ fontSize: 40 }}>{card.media.icon}</span>}
-              </div>
-            )}
-          </div>
-
-          {sections.length > 0 && (
-            <div className="px-7 pt-6">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-neutral-400 mb-3">In this article</p>
-              <ul className="space-y-2">
-                {sections.map((s, i) => <li key={i} className="text-sm text-neutral-600 leading-snug">{s}</li>)}
-              </ul>
-            </div>
-          )}
-
-          <div className="px-7 py-8">
-            <a
-              href={card.href}
-              className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-5 py-2.5 text-sm text-white hover:bg-neutral-700 transition-colors"
-            >
-              Read full article →
-            </a>
-          </div>
-        </div>
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm text-neutral-500 hover:text-neutral-900 hover:bg-white transition-colors text-lg leading-none"
+          aria-label="Close"
+        >
+          ×
+        </button>
+        <iframe src={embedUrl} className="flex-1 w-full border-0" title={card.title} />
       </div>
+      <style dangerouslySetInnerHTML={{ __html: "@keyframes modalIn{from{opacity:0;transform:scale(0.97) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}" }} />
     </>
   );
 }
