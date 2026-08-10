@@ -77,6 +77,12 @@ const SECTION_QUESTIONS: Record<string, string> = {
   "i-interpret":  "Do you know what you actually want?",
 };
 
+// AI-specific overrides for sections with "others = AI" sub-groups
+const SECTION_AI_QUESTIONS: Partial<Record<string, string>> = {
+  "others-think": "How can AI better understand humans?",
+  "others-say":   "How should AI speak so humans feel heard?",
+};
+
 const SECTION_DESCRIPTIONS: Record<string, string> = {
   "expression":   "Current interfaces reduce all intent to text boxes. But presence, nuance, and emotion are much richer than that.",
   "others-think": "We design based on assumptions about how others think — whether that someone is human or AI. Those assumptions are often wrong.",
@@ -197,9 +203,10 @@ function DearFooter() {
 
 // ── Two circles diagram ────────────────────────────────────────────────────
 
-function TwoCirclesDiagram({ activeSegment, onSegmentClick }: {
+function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI }: {
   activeSegment?: string | null;
   onSegmentClick?: (id: string) => void;
+  othersIsAI?: boolean;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const col = (id: string) => {
@@ -227,6 +234,10 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick }: {
       <text x="110" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ transition: "fill 160ms" }}>me</text>
       <circle cx="530" cy="115" r="50" stroke={cs} strokeWidth="1.5" style={{ transition: "stroke 160ms" }} />
       <text x="530" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ transition: "fill 160ms" }}>others</text>
+      {/* AI emoji badge on the others circle */}
+      {othersIsAI && (
+        <text x="568" y="77" textAnchor="middle" fontSize="18" style={{ transition: "opacity 0.3s" }}>🤖</text>
+      )}
       {seg("behave", <>
         <path d="M 155 98 Q 320 52 485 98" {...ps("behave")} />
         <polygon points="0 0,7 3,0 6" fill={col("behave")} transform="translate(478,95) rotate(-8)" style={{ transition: "fill 160ms" }} />
@@ -343,6 +354,7 @@ function Index() {
 
   const [settled, setSettled]                 = useState(false);
   const [activeSection, setActiveSection]     = useState<string | null>(null);
+  const [othersType, setOthersType]           = useState<"human" | "AI" | null>(null);
   const [atFooter, setAtFooter]               = useState(false);
   const [questionVisible, setQuestionVisible] = useState(true);
   const [navVisible, setNavVisible]           = useState(true);
@@ -441,6 +453,34 @@ function Index() {
     return () => obs.forEach(o => o.disconnect());
   }, []);
 
+  // Human/AI sub-group tracking — sentinel divs before each GroupLabel
+  useEffect(() => {
+    const margin = `-${NAV_HEIGHT + 40}px 0px -45% 0px`;
+    const obs: IntersectionObserver[] = [];
+    const watch = (id: string, type: "human" | "AI") => {
+      const el = document.getElementById(id); if (!el) return;
+      const o = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setOthersType(type); },
+        { threshold: 0, rootMargin: margin }
+      );
+      o.observe(el); obs.push(o);
+    };
+    watch("sentinel-others-think-human", "human");
+    watch("sentinel-others-think-ai",    "AI");
+    watch("sentinel-others-say-human",   "human");
+    watch("sentinel-others-say-ai",      "AI");
+    return () => obs.forEach(o => o.disconnect());
+  }, []);
+
+  // Reset othersType when moving to sections without human/AI split
+  useEffect(() => {
+    if (activeSection === "expression" || activeSection === "i-interpret") {
+      setOthersType(null);
+    } else if (activeSection === "others-think" || activeSection === "others-say") {
+      setOthersType("human"); // default to human on section entry
+    }
+  }, [activeSection]);
+
   useEffect(() => {
     const el = footerSpacerRef.current; if (!el) return;
     const obs = new IntersectionObserver(
@@ -495,17 +535,22 @@ function Index() {
               <p style={{ fontSize: 15, color: "#737373", lineHeight: 1.65 }}>Qiyu is exploring technology that brings people closer.</p>
             </div>
 
-            {/* Question title — page-heading size, left-aligned, appears when settled */}
+            {/* Question title + optional others=AI label */}
             {settled && activeSection && (
-              <div key={activeSection} className="q-title" style={{ width: "100%", marginBottom: "1.5rem", textAlign: "left" }}>
+              <div key={`${activeSection}-${othersType}`} className="q-title" style={{ width: "100%", marginBottom: "1.5rem", textAlign: "left" }}>
+                {othersType === "AI" && (
+                  <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#a3a3a3", marginBottom: 6 }}>
+                    others = AI 🤖
+                  </p>
+                )}
                 <h2 style={{ fontSize: 30, fontWeight: 600, color: "#171717", lineHeight: 1.2, letterSpacing: "-0.01em", opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
-                  {SECTION_QUESTIONS[activeSection]}
+                  {(othersType === "AI" && SECTION_AI_QUESTIONS[activeSection]) || SECTION_QUESTIONS[activeSection]}
                 </h2>
               </div>
             )}
 
             {/* THE single diagram */}
-            <TwoCirclesDiagram activeSegment={settled ? activeSegment : null} onSegmentClick={handleSegmentClick} />
+            <TwoCirclesDiagram activeSegment={settled ? activeSegment : null} onSegmentClick={handleSegmentClick} othersIsAI={othersType === "AI"} />
 
             {/* Hero hint */}
             <div ref={heroHintRef} style={{ marginTop: "1.5rem", textAlign: "center" }}>
@@ -526,7 +571,7 @@ function Index() {
 
       {/* Main white content */}
       <div className="relative z-10 bg-background" style={{ boxShadow: "0 0 80px 20px rgba(0,0,0,0.18)" }}>
-        <TopNav />
+        <TopNav visible={navVisible} />
         <div style={{ height: `calc(100vh - ${NAV_HEIGHT}px)`, background: "#fafafa" }} />
 
         <div className="flex">
@@ -557,11 +602,13 @@ function Index() {
                 <a href="/think" className="text-sm text-neutral-400 hover:text-white transition-colors">See frameworks →</a>
               </div>
               <div className="grid grid-cols-2 gap-5">
+                <div id="sentinel-others-think-human" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="others = human" />
                 <Card title="Design as a research tool" meta="Case study · Service design" href="/design-as-a-research-tool" slug="design-as-a-research-tool" {...ch} media={{ type: "image", src: "/articles/design-as-research-tool-thumb.png" }} />
                 <Card title="Meet the stranger challenge" meta="Experiment · Connection" href="https://www.linkedin.com/feed/update/urn:li:activity:7404207024164683776/" isExternal {...ch} media={{ type: "image", src: "/articles/meet-stranger-calendly.png" }} />
                 <Card title="Thinking frameworks" meta="Models · /reflect" href="/think" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#fafafa 0%,#efefef 100%)", label: "Mental models for understanding how people think — analysis-synthesis, 2×2 quadrant, double diamond." }} />
 
+                <div id="sentinel-others-think-ai" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="others = AI" />
                 <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png", thumbnailSize: "medium" }} />
                 <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.svg", thumbnailSize: "small" }} />
@@ -578,11 +625,13 @@ function Index() {
                 <a href="/listen" className="text-sm text-neutral-400 hover:text-white transition-colors">Listen →</a>
               </div>
               <div className="grid grid-cols-2 gap-5">
+                <div id="sentinel-others-say-human" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="others = human" />
                 <Card title="Hello Humans" meta="Non-software · Analog" href="/hello-humans" {...ch} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
                 <Card title="Voices that shaped how I think" meta="Interactive graph · /listen" href="/listen" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
                 <Card title="Human-AI relationship research" meta="Research · Collaboration" href="/human-ai-research" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f0f4f8 0%,#dde6f0 100%)", label: "Exploring the evolving nature of human-AI collaboration and what it means for how we relate." }} />
 
+                <div id="sentinel-others-say-ai" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="others = AI" />
                 <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", thumbnailSize: "small" }} />
                 <Card title="Google Cloud — Conversational AI" meta="Prototype · 0→1" href="/google-cloud" slug="google-cloud" {...ch} media={{ type: "image", src: "/articles/google-cloud-thumb.png" }} />
