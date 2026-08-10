@@ -71,8 +71,8 @@ const SECTION_TABS = [
 
 const SECTION_QUESTIONS: Record<string, string> = {
   "expression":   "Is there a richer way to express yourself?",
-  "others-think": "How do you understand what others are thinking?",
-  "others-say":   "What does it sound like when others respond?",
+  "others-think": "How might we understand what others are thinking?",
+  "others-say":   "How to capture what others say elsewhere?",
   "i-interpret":  "Do I actually know how I think?",
 };
 
@@ -234,10 +234,6 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI, hideLabe
       <text x="110" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ transition: "fill 160ms" }}>me</text>
       <circle cx="530" cy="115" r="50" stroke={cs} strokeWidth="1.5" style={{ transition: "stroke 160ms" }} />
       <text x="530" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ transition: "fill 160ms" }}>others</text>
-      {/* AI emoji badge on the others circle */}
-      {othersIsAI && (
-        <text x="568" y="77" textAnchor="middle" fontSize="18" style={{ transition: "opacity 0.3s" }}>🤖</text>
-      )}
       {seg("behave", <>
         <path d="M 155 98 Q 320 52 485 98" {...ps("behave")} />
         <polygon points="0 0,7 3,0 6" fill={col("behave")} transform="translate(478,95) rotate(-8)" style={{ transition: "fill 160ms" }} />
@@ -548,8 +544,18 @@ function Index() {
             {/* Larger gap between title and diagram */}
             {settled && <div style={{ flex: 1.4 }} />}
 
-            {/* THE single diagram — labels hidden in split view */}
-            <TwoCirclesDiagram activeSegment={settled ? activeSegment : null} onSegmentClick={handleSegmentClick} othersIsAI={othersType === "AI"} hideLabels={settled} />
+            {/* THE single diagram + emoji badge as real DOM element */}
+            <div style={{ position: "relative", width: "100%" }}>
+              <TwoCirclesDiagram activeSegment={settled ? activeSegment : null} onSegmentClick={handleSegmentClick} othersIsAI={othersType === "AI"} hideLabels={settled} />
+              {othersType === "AI" && (
+                <span style={{
+                  position: "absolute", top: "30%", left: "89%",
+                  fontSize: 22, lineHeight: 1,
+                  transform: "translate(-50%, -50%)",
+                  pointerEvents: "none", transition: "opacity 0.25s",
+                }}>🤖</span>
+              )}
+            </div>
 
             {/* Section description — close to diagram */}
             {settled && activeSection && (
@@ -606,16 +612,14 @@ function Index() {
               <div className="grid grid-cols-2 gap-5">
                 <div id="sentinel-others-think-human" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="others = human" />
-                <Card title="Design as a research tool" meta="Case study · Service design" href="/design-as-a-research-tool" slug="design-as-a-research-tool" {...ch} media={{ type: "image", src: "/articles/design-as-research-tool-thumb.png" }} />
-                <Card title="Meet the stranger challenge" meta="Experiment · Connection" href="https://www.linkedin.com/feed/update/urn:li:activity:7404207024164683776/" isExternal {...ch} media={{ type: "image", src: "/articles/meet-stranger-calendly.png" }} />
-                <Card title="Thinking frameworks" meta="Models · /reflect" href="/think" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#fafafa 0%,#efefef 100%)", label: "Mental models for understanding how people think — analysis-synthesis, 2×2 quadrant, double diamond." }} />
-
+                <Card title="Research through design" meta="Case study · Service design" href="/design-as-a-research-tool" slug="design-as-a-research-tool" {...ch} media={{ type: "image", src: "/articles/design-as-research-tool-thumb.png" }} />
+                <Card title="A Social Experiment about meeting strangers" meta="Experiment · Connection" href="https://www.linkedin.com/feed/update/urn:li:activity:7404207024164683776/" isExternal {...ch} media={{ type: "image", src: "/articles/meet-stranger-calendly.png" }} />
                 <div id="sentinel-others-think-ai" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="others = AI" />
                 <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png", thumbnailSize: "medium" }} />
+                <Card title="Design the Human-AI relationships, then interaction" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
+                <Card title="Personalization? What defines a person?" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.svg", thumbnailSize: "xs" }} />
                 <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.svg", thumbnailSize: "small" }} />
-                <Card title="Personalization" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.svg", thumbnailSize: "xs" }} />
-                <Card title="Designing Next-Gen AI Products" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
               </div>
             </section>
 
@@ -629,14 +633,15 @@ function Index() {
               <div className="grid grid-cols-2 gap-5">
                 <div id="sentinel-others-say-human" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="others = human" />
-                <Card title="Hello Humans" meta="Non-software · Analog" href="/hello-humans" {...ch} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
+                <Card title="Prototypes beyond software" meta="Non-software · Analog" href="/hello-humans" {...ch} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
                 <Card title="Voices that shaped how I think" meta="Interactive graph · /listen" href="/listen" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
 
                 <div id="sentinel-others-say-ai" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="others = AI" />
-                <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", thumbnailSize: "small" }} />
-                <Card title="Google Cloud — Conversational AI" meta="Prototype · 0→1" href="/google-cloud" slug="google-cloud" {...ch} media={{ type: "image", src: "/articles/google-cloud-thumb.png" }} />
                 <Card title="Conversations that earn trust" meta="Research · Conversation design" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
+                <Card title="What do prototypes prototype?" meta="Article · Method" href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...ch} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg", thumbnailSize: "medium" }} />
+                <Card title="Google Cloud — Conversational AI" meta="Prototype · 0→1" href="/google-cloud" slug="google-cloud" {...ch} media={{ type: "image", src: "/articles/google-cloud-thumb.png" }} />
+                <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", thumbnailSize: "small" }} />
               </div>
             </section>
 
@@ -645,11 +650,9 @@ function Index() {
             {/* ── 04 I interpret ── */}
             <section id="i-interpret" className="px-6 pt-8 pb-12 scroll-mt-24">
               <div className="grid grid-cols-2 gap-5">
+                <Card title="How Claude is shaping how I think" meta="Research · Tools" href="/claude-code-research" slug="claude-code-research" {...ch} media={{ type: "image", src: "/articles/claude-code-thumb.png", thumbnailSize: "small" }} />
                 <Card title="AIOS — seeing your own blindspots" meta="Prototype · Self-reflection" badge="in progress" {...ch} media={{ type: "concept", icon: "◎", label: "A personal OS for mapping what I know, don't know, and don't know I don't know.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
                 <Card title="AI-supported journaling" meta="Concept · Self-understanding" badge="coming soon" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f5f5f0 0%,#e8e8e0 100%)", label: "Using AI to surface patterns in how I interpret the world and what I actually want." }} />
-                <Card title="How Claude is shaping how I think" meta="Research · Tools" href="/claude-code-research" slug="claude-code-research" {...ch} media={{ type: "image", src: "/articles/claude-code-thumb.png", thumbnailSize: "small" }} />
-                <Card title="What do prototypes prototype?" meta="Article · Method" href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...ch} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg", thumbnailSize: "medium" }} />
-                <Card title="Reflection frameworks" meta="Models · /reflect" href="/think" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f0f4ff 0%,#e4eaff 100%)", label: "The mental models I use to interpret what I experience — quadrants, bridges, blueprints." }} />
               </div>
             </section>
 
