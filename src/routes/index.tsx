@@ -1,754 +1,557 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState, useEffect, useRef } from "react";
-import { LayoutGrid, Wrench, Sparkles, UserRound, FileText, Box } from "lucide-react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
+import { CardIcon } from "./-CardIcon";
 import { ARTICLE_META } from "./-articleMeta";
 import { NAV_ITEMS, navHref } from "./-navItems";
-import { CardIcon } from "./-CardIcon";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Qiyu x AI interaction" },
+      { title: "Qiyu — Human Interaction" },
       {
         name: "description",
         content:
-          "A curated collection of prototypes and articles exploring implementation, look & feel, and role.",
-      },
-      { property: "og:title", content: "What do prototypes prototype" },
-      {
-        property: "og:description",
-        content:
-          "A curated collection of prototypes and articles across implementation, look & feel, and role.",
+          "Prototypes and explorations at the edges of human interaction — what gets expressed, what gets lost, what gets understood.",
       },
     ],
   }),
   component: Index,
 });
 
-type Kind = "Prototype" | "Article";
-type Category = "Implementation" | "Look & Feel" | "Role";
+// ── Types ─────────────────────────────────────────────────────────────────
 
-type Item = {
-  title: string;
-  blurb: string;
-  category: Category;
-  kind: Kind;
-  meta: string;
-  accent: string; // tailwind bg for the visual tile
-  highlightWord?: string;
-  externalLink?: string;
-  thumbnail?: string;
-  thumbnailSize?: "xs" | "small" | "medium";
-  videoPreview?: string;
-  videoStartTime?: number;
-  videoZoom?: number; // scale factor, e.g. 1.5 = 50% zoom in
-  videoTransform?: string; // full CSS transform override, e.g. "scale(2) translateX(-15%)"
-};
+type DearMode = "recruiter" | "dating" | "future-self";
 
-type ItemWithSlug = Item & { slug: string };
+type CardMedia =
+  | { type: "video"; src: string; transform?: string; startTime?: number }
+  | { type: "image"; src: string; fit?: "cover" | "contain" }
+  | { type: "concept"; icon?: string; label?: string; gradient?: string };
 
-const ITEMS: ItemWithSlug[] = [
-  {
-    slug: "what-do-prototypes-prototype",
-    title: ARTICLE_META["what-do-prototypes-prototype"].title,
-    thumbnail: ARTICLE_META["what-do-prototypes-prototype"].thumbnail,
-    thumbnailSize: ARTICLE_META["what-do-prototypes-prototype"].thumbnailSize,
-    blurb: "Prototyping as a research mindset, and designing to elicit errors rather than hide them.",
-    category: "Implementation",
-    kind: "Article",
-    meta: "6 min read",
-    accent: "bg-gradient-to-br from-amber-100 to-orange-200",
-  },
-  {
-    slug: "ai-ai-interaction",
-    title: ARTICLE_META["ai-ai-interaction"].title,
-    blurb: "Visualizing how two AI agents communicate and resolve differences in real-time.",
-    category: "Look & Feel",
-    kind: "Prototype",
-    meta: "Concept · Motion",
-    accent: "bg-gradient-to-br from-sky-100 to-indigo-200",
-    videoPreview: "/articles/ai-ai-interaction.mp4",
-    videoStartTime: 5,
-  },
-  {
-    slug: "designing-next-gen-ai-products",
-    title: ARTICLE_META["designing-next-gen-ai-products"].title,
-    thumbnail: ARTICLE_META["designing-next-gen-ai-products"].thumbnail,
-    thumbnailSize: ARTICLE_META["designing-next-gen-ai-products"].thumbnailSize,
-    blurb: "Mapping UX to tech capability. Insights from conversational AI, elder care, and human–AI co-writing.",
-    category: "Role",
-    kind: "Article",
-    meta: "8 min read",
-    accent: "bg-gradient-to-br from-stone-200 to-stone-300",
-  },
-  {
-    slug: "reimagining-the-chatbot",
-    title: ARTICLE_META["reimagining-the-chatbot"].title,
-    thumbnail: ARTICLE_META["reimagining-the-chatbot"].thumbnail,
-    blurb: "Exploring how prompts reshape design workflows—generative design meets human intent.",
-    category: "Implementation",
-    kind: "Prototype",
-    meta: "Collection · Design system",
-    accent: "bg-gradient-to-br from-violet-100 to-purple-200",
-  },
-  {
-    slug: "product-launch-from-0-1",
-    title: ARTICLE_META["product-launch-from-0-1"].title,
-    thumbnail: ARTICLE_META["product-launch-from-0-1"].thumbnail,
-    blurb: "Building Meetfood from concept to launch—a food discovery app connecting people to local cuisine.",
-    category: "Role",
-    kind: "Article",
-    meta: "Case study",
-    accent: "bg-gradient-to-br from-pink-100 to-red-200",
-    externalLink: "https://meetfood.us/",
-  },
-  {
-    slug: "knowledge-graph-visualization",
-    title: ARTICLE_META["knowledge-graph-visualization"].title,
-    blurb: "Turning abstract AI reasoning into tangible, navigable visual structures.",
-    category: "Look & Feel",
-    kind: "Prototype",
-    meta: "Data viz · Interaction",
-    accent: "bg-gradient-to-br from-neutral-200 to-neutral-300",
-    videoPreview: "/articles/chatbot-knowledge-graph.mp4",
-    videoTransform: "scale(2) translateY(20%)",
-  },
-  {
-    slug: "google-cloud",
-    title: ARTICLE_META["google-cloud"].title,
-    thumbnail: ARTICLE_META["google-cloud"].thumbnail,
-    blurb: "Embedding AI into the product discovery experience for startup customers.",
-    category: "Implementation",
-    kind: "Prototype",
-    meta: "Research · 0→1",
-    accent: "bg-gradient-to-br from-blue-100 to-cyan-200",
-  },
-  {
-    slug: "a2ui-generative",
-    title: ARTICLE_META["a2ui-generative"].title,
-    thumbnail: ARTICLE_META["a2ui-generative"].thumbnail,
-    thumbnailSize: ARTICLE_META["a2ui-generative"].thumbnailSize,
-    blurb: "AI-driven user interfaces that generate and adapt components based on intent.",
-    category: "Look & Feel",
-    kind: "Prototype",
-    meta: "Research · AI",
-    accent: "bg-gradient-to-br from-purple-100 to-pink-200",
-  },
-  {
-    slug: "design-as-a-research-tool",
-    title: ARTICLE_META["design-as-a-research-tool"].title,
-    thumbnail: ARTICLE_META["design-as-a-research-tool"].thumbnail,
-    blurb: "Using design methods to uncover hidden user behaviors and inform transportation policy.",
-    category: "Role",
-    kind: "Article",
-    meta: "Case study",
-    accent: "bg-gradient-to-br from-teal-100 to-cyan-200",
-  },
-  {
-    slug: "physical-ai",
-    title: ARTICLE_META["physical-ai"].title,
-    thumbnail: ARTICLE_META["physical-ai"].thumbnail,
-    blurb: "Exploring AI beyond screens—how intelligent systems interact with and shape the physical world.",
-    category: "Role",
-    kind: "Prototype",
-    meta: "Research · Physical",
-    accent: "bg-gradient-to-br from-slate-100 to-gray-200",
-  },
-  {
-    slug: "claude-code-research",
-    title: ARTICLE_META["claude-code-research"].title,
-    thumbnail: ARTICLE_META["claude-code-research"].thumbnail,
-    thumbnailSize: ARTICLE_META["claude-code-research"].thumbnailSize,
-    blurb: "Building and evolving development tools powered by AI assistance.",
-    category: "Implementation",
-    kind: "Prototype",
-    meta: "Research · Tools",
-    accent: "bg-gradient-to-br from-indigo-100 to-blue-200",
-  },
-  {
-    slug: "designing-for-conversations-that-earn-trust",
-    title: ARTICLE_META["designing-for-conversations-that-earn-trust"].title,
-    thumbnail: ARTICLE_META["designing-for-conversations-that-earn-trust"].thumbnail,
-    thumbnailSize: ARTICLE_META["designing-for-conversations-that-earn-trust"].thumbnailSize,
-    blurb: "How to build AI systems that users can depend on—insights from caring AI research.",
-    category: "Role",
-    kind: "Article",
-    meta: "Research · Design",
-    accent: "bg-gradient-to-br from-green-100 to-emerald-200",
-  },
-  {
-    slug: "proactive",
-    title: ARTICLE_META["proactive"].title,
-    thumbnail: ARTICLE_META["proactive"].thumbnail,
-    thumbnailSize: ARTICLE_META["proactive"].thumbnailSize,
-    blurb: "Using prototypes as testing tools to validate assumptions and iterate with stakeholders in real-time.",
-    category: "Implementation",
-    kind: "Prototype",
-    meta: "Research · Testing",
-    accent: "bg-gradient-to-br from-cyan-100 to-blue-200",
-  },
-  {
-    slug: "personalization",
-    title: ARTICLE_META["personalization"].title,
-    thumbnail: ARTICLE_META["personalization"].thumbnail,
-    thumbnailSize: ARTICLE_META["personalization"].thumbnailSize,
-    blurb: "Understanding what makes humans human—exploring the future of AI through the lens of personal connection.",
-    category: "Role",
-    kind: "Article",
-    meta: "Research · AI Philosophy",
-    accent: "bg-gradient-to-br from-violet-100 to-purple-200",
-  },
-  {
-    slug: "always-here",
-    title: ARTICLE_META["always-here"].title,
-    blurb: "What if the AI didn't wait to be asked? Exploring proactive presence and reducing cognitive load.",
-    category: "Look & Feel",
-    kind: "Prototype",
-    meta: "Interaction · AI",
-    accent: "bg-gradient-to-br from-rose-100 to-orange-200",
-    videoPreview: "/articles/chatbot-always-here.mp4",
-    videoTransform: "scale(2.2) translateX(-12%)",
-  },
-];
+// ── Section tabs data ──────────────────────────────────────────────────────
 
-// ── Shared timeline node data ──────────────────────────────────────────────
-const TIMELINE_NODES = [
-  { key: "All",          nat: 0,   txFull: 0,    toLeft: "0%",   toTx: "translateX(0)",     delay: 0   },
-  { key: "chatbot",      nat: 22,  txFull: -50,  toLeft: "22%",  toTx: "translateX(-50%)",  delay: 35  },
-  { key: "reasoner",     nat: 36,  txFull: -50,  toLeft: "36%",  toTx: "translateX(-50%)",  delay: 70  },
-  { key: "agent",        nat: 50,  txFull: -50,  toLeft: "50%",  toTx: "translateX(-50%)",  delay: 105 },
-  { key: "innovator",    nat: 63,  txFull: -50,  toLeft: "63%",  toTx: "translateX(-50%)",  delay: 140 },
-  { key: "Organization", nat: 76,  txFull: -50,  toLeft: "76%",  toTx: "translateX(-50%)",  delay: 175 },
-  { key: "human",        nat: 100, txFull: -100, toLeft: "100%", toTx: "translateX(-100%)", delay: 210 },
+const SECTION_TABS = [
+  { id: "expression",     label: "Expression"     },
+  { id: "self-knowledge", label: "Self-knowledge" },
+  { id: "interpretation", label: "Interpretation" },
+  { id: "listening",      label: "Listening"      },
 ] as const;
 
-/**
- * Renders timeline dots in two modes:
- *  - "scroll"  : dots converge as scrollProgress → 1, label opacity fades
- *  - "expand"  : dots fly out via CSS transitions when isExpanded flips
- *
- * Label visibility: active label always shows; inactive labels use `hidden lg:block` (CSS only, no JS measurement).
- */
-function TimelineNodes({
-  selectedStage, setSelectedStage,
-  mode, scrollProgress = 0, isExpanded = true,
-}: {
-  selectedStage: string;
-  setSelectedStage: (s: string) => void;
-  mode: "scroll" | "expand";
-  scrollProgress?: number;
-  isExpanded?: boolean;
-}) {
-  const expandEase   = "cubic-bezier(0.34,1.56,0.64,1)";
-  const collapseEase = "cubic-bezier(0.55,0,1,0.45)";
+// ── Music player ──────────────────────────────────────────────────────────
 
-  return (
-    <>
-      {/* Connecting lines */}
-      <svg className="absolute inset-0 w-full h-12" style={{ overflow: "visible", top: "0" }}>
-        <line x1="0%" y1="10" x2="76%" y2="10" stroke="#d1d5db" strokeWidth="2"
-          style={{ opacity: mode === "scroll" ? 1 - scrollProgress : isExpanded ? 1 : 0,
-                   transition: mode === "expand" ? "opacity 200ms ease 300ms" : undefined }} />
-        <line x1="76%" y1="10" x2="100%" y2="10" stroke="#d1d5db" strokeWidth="2" strokeDasharray="4,4"
-          style={{ opacity: mode === "scroll" ? 1 - scrollProgress : isExpanded ? 1 : 0,
-                   transition: mode === "expand" ? "opacity 200ms ease 300ms" : undefined }} />
-      </svg>
+function MusicPlayer() {
+  const [playing, setPlaying] = useState(false);
+  const seekTo = 43;
+  const audioRef = useRef<HTMLAudioElement>(null);
 
-      {/* Dots */}
-      <div className="relative z-10 h-12">
-        {TIMELINE_NODES.map(({ key, nat, txFull, toLeft, toTx, delay }) => {
-          const isActive = selectedStage === key;
-          // label fade: active always shows, inactive shows on lg+ screens
-          const labelProgress = mode === "scroll" ? scrollProgress : 0;
-          const labelOpacity  = Math.max(0, 1 - labelProgress * 2);
-
-          const dotStyle = mode === "scroll"
-            ? {
-                left: `${nat * (1 - scrollProgress)}%`,
-                transform: `translateX(${txFull * (1 - scrollProgress)}%)`,
-                opacity: 1 - scrollProgress,
-                pointerEvents: scrollProgress > 0.85 ? "none" as const : "auto" as const,
-              }
-            : {
-                left: isExpanded ? toLeft : "0%",
-                transform: isExpanded ? toTx : "translateX(0)",
-                opacity: isExpanded ? 1 : 0,
-                transition: isExpanded
-                  ? `left 380ms ${expandEase} ${delay}ms, transform 380ms ${expandEase} ${delay}ms, opacity 180ms ease ${delay}ms`
-                  : `left 260ms ${collapseEase}, transform 260ms ${collapseEase}, opacity 120ms ease`,
-                pointerEvents: isExpanded ? "auto" as const : "none" as const,
-              };
-
-          return (
-            <button
-              key={key}
-              onClick={() => setSelectedStage(key)}
-              className="absolute flex flex-col items-center gap-2 group"
-              style={dotStyle}
-            >
-              <div className={`h-5 w-5 rounded-full transition-colors relative z-20 ${isActive ? "bg-neutral-900" : "bg-white border-2 border-neutral-400 hover:border-neutral-900"}`} />
-              <span
-                className={`text-sm font-medium whitespace-nowrap transition-opacity duration-150 ${isActive ? "block" : "hidden lg:block"}`}
-                style={{ opacity: labelOpacity, color: isActive ? "#171717" : "#737373" }}
-              >
-                {key}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </>
-  );
-}
-
-const CATEGORIES = [
-  { label: "All", icon: LayoutGrid },
-  { label: "Implementation", icon: Wrench },
-  { label: "Look & Feel", icon: Sparkles },
-  { label: "Role", icon: UserRound },
-] as const;
-
-const KINDS = [
-  { label: "All", icon: LayoutGrid },
-  { label: "Prototype", icon: Box },
-  { label: "Article", icon: FileText },
-] as const;
-
-function Index() {
-  const [selectedStage, setSelectedStage] = useState<string>("All");
-  const [showPrototypeModal, setShowPrototypeModal] = useState(false);
-  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
-  const [scrolledDown, setScrolledDown] = useState(false);
-  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0); // 0 = fully expanded, 1 = fully collapsed
-  const lockedOpen = useRef(false);
-  const rafId = useRef(0);
-  // collapse only when there's more than one row of cards (lg = 3 cols)
-  const canCollapse = useRef(true);
+  const toggle = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) { el.pause(); }
+    else {
+      if (el.currentTime < seekTo - 1 || el.currentTime > seekTo + 3) el.currentTime = seekTo;
+      el.play().catch(() => {});
+    }
+    setPlaying(!playing);
+  };
 
   useEffect(() => {
-    const SCROLL_START = 80;
-    const SCROLL_END   = 300;
-
-    const handleScroll = () => {
-      if (!canCollapse.current) return;
-      cancelAnimationFrame(rafId.current);
-      rafId.current = requestAnimationFrame(() => {
-        const y = window.scrollY;
-        const p = Math.max(0, Math.min(1, (y - SCROLL_START) / (SCROLL_END - SCROLL_START)));
-        setScrollProgress(p);
-        const down = y >= SCROLL_END;
-        setScrolledDown(down);
-        if (y < SCROLL_START) {
-          lockedOpen.current = false;
-          setTimelineCollapsed(false);
-        } else if (down) {
-          lockedOpen.current = false;
-          setTimelineCollapsed(true);
-        }
-      });
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      cancelAnimationFrame(rafId.current);
-    };
+    const el = audioRef.current;
+    if (!el) return;
+    const onEnd = () => setPlaying(false);
+    el.addEventListener("ended", onEnd);
+    return () => el.removeEventListener("ended", onEnd);
   }, []);
 
-  const handleHeaderMouseLeave = () => {
-    if (scrolledDown && !lockedOpen.current) setTimelineCollapsed(true);
-  };
-  const handleDotHover = () => {
-    if (scrolledDown) setTimelineCollapsed(false);
-  };
-  const handleDotClick = () => {
-    lockedOpen.current = true;
-    setTimelineCollapsed(false);
-  };
-
-  const stageMap: Record<string, string[]> = {
-    All: [],
-    chatbot: ["select-fill-with-prompts", "google-cloud", "reimagining-the-chatbot", "designing-for-conversations-that-earn-trust"],
-    reasoner: ["knowledge-graph-visualization"],
-    agent: ["proactive"],
-    innovator: ["making-design-fun", "a2ui-generative"],
-    human: ["design-as-a-research-tool", "physical-ai", "designing-next-gen-ai-products", "personalization"],
-    Organization: ["ai-ai-interaction", "claude-code-research"],
-  };
-
-  const stageSections: Record<string, { main: string; sub: string }[]> = {
-    chatbot: [
-      { main: "how AI communicates", sub: "designing conversations that matter" },
-      { main: "building trust through transparency", sub: "when AI asks for feedback" },
-    ],
-    reasoner: [
-      { main: "visualizing complexity", sub: "making abstract thinking visible" },
-    ],
-    agent: [
-      { main: "prototyping as learning", sub: "using tests to understand problems" },
-    ],
-    innovator: [
-      { main: "making things fun", sub: "creativity without friction" },
-    ],
-    human: [
-      { main: "AI beyond screens", sub: "design as a tool, AI beyond screens" },
-      { main: "relationship > interactions", sub: "understanding what makes us human" },
-    ],
-    Organization: [
-      { main: "tools that amplify", sub: "building infrastructure for capability" },
-    ],
-  };
-
-  const tableOfContents: Record<string, string[]> = Object.fromEntries(
-    Object.entries(ARTICLE_META)
-      .filter(([, meta]) => meta.sections)
-      .map(([slug, meta]) => [slug, meta.sections!])
-  );
-
-  const filtered = useMemo(
-    () =>
-      selectedStage === "All"
-        ? ITEMS
-        : ITEMS.filter((i) => stageMap[selectedStage]?.includes(i.slug)),
-    [selectedStage],
-  );
-
-  // Keep canCollapse in sync with filtered count; reset if falling to 1 row
-  useEffect(() => {
-    const moreThanOneRow = filtered.length > 3;
-    canCollapse.current = moreThanOneRow;
-    if (!moreThanOneRow) {
-      lockedOpen.current = false;
-      setScrolledDown(false);
-      setTimelineCollapsed(false);
-      setScrollProgress(0);
-    }
-  }, [filtered.length]);
-
-  const renderCard = (item: ItemWithSlug) => {
-    const href = item.externalLink || `/${item.slug}`;
-    const target = item.externalLink ? "_blank" : undefined;
-    const rel = item.externalLink ? "noopener noreferrer" : undefined;
-    const toc = tableOfContents[item.slug] || [];
-
-    return (
-      <a
-        key={item.slug}
-        href={href}
-        target={target}
-        rel={rel}
-        className={
-          "group relative rounded-2xl p-3 shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-0 bg-white transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] block"
-        }
-        onMouseEnter={(e) => { const v = e.currentTarget.querySelector('video'); if (v) { v.currentTime = item.videoStartTime ?? 0; v.play(); } }}
-        onMouseMove={(e) => { setCursorPos({ x: e.clientX, y: e.clientY }); setHoveredSlug(item.slug); }}
-        onMouseLeave={(e) => { setHoveredSlug(null); const v = e.currentTarget.querySelector('video'); if (v) { v.pause(); v.currentTime = item.videoStartTime ?? 0; } }}
-      >
-        <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-white">
-          {item.thumbnail ? (
-            <img
-              src={item.thumbnail}
-              alt={item.title}
-              className={item.thumbnailSize === "xs" ? "w-8 h-8 object-contain" : item.thumbnailSize === "small" ? "w-16 h-16 object-contain" : item.thumbnailSize === "medium" ? "w-32 h-32 object-contain" : "h-full w-full object-contain p-2"}
-            />
-          ) : item.videoPreview ? (
-            <video
-              src={`${item.videoPreview}#t=${item.videoStartTime ?? 0.001}`}
-              preload="metadata"
-              muted
-              loop
-              className="h-full w-full object-cover"
-              style={{ transform: item.videoTransform ?? (item.videoZoom ? `scale(${item.videoZoom})` : undefined) }}
-            />
-          ) : (
-            <span className="text-xs uppercase tracking-[0.2em] text-neutral-400"
-            >
-              {item.kind}
-            </span>
-          )}
-          <CardIcon hasVideo={!!item.videoPreview} />
-        </div>
-        <div className="flex items-start justify-between gap-4 px-2 pb-2 pt-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-              <span>{item.category}</span>
-              <span>·</span>
-              <span>{item.meta}</span>
-            </div>
-            <h3 className="mt-1 text-[15px] font-medium text-neutral-900">
-              {item.title}
-            </h3>
-          </div>
-        </div>
-      </a>
-    );
-  };
-
-  const hoveredToc = hoveredSlug ? (tableOfContents[hoveredSlug] || []) : [];
-
   return (
-    <div className="min-h-screen bg-background text-neutral-900">
-      {/* Cursor TOC tooltip */}
-      {hoveredSlug && hoveredToc.length > 0 && (
-        <div
-          className="fixed z-50 pointer-events-none"
-          style={{ left: cursorPos.x + 16, top: cursorPos.y + 16 }}
-        >
-          <div className="bg-neutral-900 text-white rounded-2xl px-5 py-4 shadow-xl max-w-[220px]">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-semibold mb-3">Article</p>
-            <ul className="space-y-2">
-              {hoveredToc.map((section, idx) => (
-                <li key={idx} className="text-[12px] font-semibold text-white leading-snug">{section}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-      {/* Nav */}
-      <header
-        className="sticky top-0 z-50 bg-background/90 backdrop-blur-sm border-b border-neutral-200/50"
-        onMouseLeave={handleHeaderMouseLeave}
+    <div className="mt-8 flex items-center gap-3 flex-wrap">
+      <audio ref={audioRef} src="/baby-salt.mp3" preload="none" />
+      <button
+        onClick={toggle}
+        className="flex items-center gap-2.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white backdrop-blur-sm transition-all hover:bg-white/20 active:scale-95"
       >
-        {!scrolledDown ? (
-          /* ── At top: badge + nav + Qiyu ── */
-          <div className="mx-auto flex max-w-6xl items-center px-6 py-4">
-            <div className="flex-1 flex items-center">
-              <a href="/what-do-prototypes-prototype" className="hidden md:inline-flex group relative items-center gap-2 rounded-full bg-white px-3 py-1 text-xs text-neutral-600 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:bg-neutral-900 hover:text-white hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-all overflow-hidden">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                <span className="transition-all duration-300 group-hover:-translate-x-4 group-hover:opacity-0 whitespace-nowrap">currently AI prototyper @Apple</span>
-                <span className="absolute left-6 translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap">What do prototypes prototype?</span>
-              </a>
-            </div>
-            <nav className="flex items-center gap-1 rounded-full border border-neutral-200 bg-white p-1 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-              {NAV_ITEMS.map((l) => (
-                <Link key={l} to={navHref(l)} className={"rounded-full px-4 py-1.5 text-sm transition-colors " + (l === "work" ? "bg-neutral-900 text-white" : "text-neutral-600 hover:text-neutral-900")}>{l}</Link>
-              ))}
-            </nav>
-            <div className="flex-1 flex justify-end">
-              <div className="hidden md:flex group relative h-9 items-center">
-                <div className="absolute right-0 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap bg-neutral-900 text-white text-xs px-3 py-1.5 rounded-full z-10">"key-you" it is 🔑 🫵</div>
-                <a href="/" className="text-sm font-medium text-neutral-900 transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none">Qiyu</a>
-                <a href="https://www.linkedin.com/in/qiyu-hu/" className="absolute inset-0 flex items-center justify-end text-sm font-medium text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
-                  Qiyu<span className="translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200 delay-100">'s LinkedIn</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* ── Scrolled: two panels, fixed height ── */
-          <div className="relative h-[72px]">
-
-            {/* Panel A: dot + nav + Qiyu — fades out when expanded */}
-            <div className={`absolute inset-0 flex items-center transition-opacity duration-200 ${timelineCollapsed ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <div className="mx-auto flex w-full max-w-6xl items-center px-6">
-                <div className="flex-1 flex items-center">
-                  <button onMouseEnter={handleDotHover} onClick={handleDotClick} className="flex items-center gap-2 group">
-                    <div className="h-5 w-5 rounded-full bg-neutral-900 transition-transform group-hover:scale-125 shrink-0" />
-                    <span className="text-xs text-neutral-500 group-hover:text-neutral-900 transition-colors">{selectedStage}</span>
-                  </button>
-                </div>
-                <nav className="flex items-center gap-1 rounded-full border border-neutral-200 bg-white p-1 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-                  {NAV_ITEMS.map((l) => (
-                    <Link key={l} to={navHref(l)} className={"rounded-full px-4 py-1.5 text-sm transition-colors " + (l === "work" ? "bg-neutral-900 text-white" : "text-neutral-600 hover:text-neutral-900")}>{l}</Link>
-                  ))}
-                </nav>
-                <div className="flex-1 flex justify-end">
-                  <div className="hidden md:flex group relative h-9 items-center">
-                    <div className="absolute right-0 top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap bg-neutral-900 text-white text-xs px-3 py-1.5 rounded-full z-10">"key-you" it is 🔑 🫵</div>
-                    <a href="/" className="text-sm font-medium text-neutral-900 transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none">Qiyu</a>
-                    <a href="https://www.linkedin.com/in/qiyu-hu/" className="absolute inset-0 flex items-center justify-end text-sm font-medium text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap">
-                      Qiyu<span className="translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200 delay-100">'s LinkedIn</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Panel B: animated timeline — always mounted, dots transition from origin */}
-            <div className={`absolute inset-0 transition-opacity duration-200 ${!timelineCollapsed ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <div className="mx-auto max-w-6xl px-6 h-full flex items-center">
-                <div className="relative w-full h-12">
-                  <TimelineNodes
-                    selectedStage={selectedStage}
-                    setSelectedStage={setSelectedStage}
-                    mode="expand"
-                    isExpanded={!timelineCollapsed}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* Hero */}
-      <section className="mx-auto max-w-3xl px-6 pt-16 pb-28 text-center">
-        <h1 className="text-5xl font-medium tracking-tight text-neutral-900 md:text-6xl">
-          Prototyping "What-if"
-          <br />
-          in Human–AI Interactions
-        </h1>
-      </section>
-
-      {/* Timeline — separate sticky row, visible while scrolling (scroll-progress collapse) */}
-      {!scrolledDown && (
-        <div className="sticky top-[69px] z-40 bg-background/90 backdrop-blur-sm border-b border-neutral-200/50">
-          <section className="mx-auto max-w-6xl px-6 py-6">
-            <div className="relative">
-              <TimelineNodes
-                selectedStage={selectedStage}
-                setSelectedStage={setSelectedStage}
-                mode="scroll"
-                scrollProgress={scrollProgress}
-              />
-            </div>
-          </section>
-        </div>
-      )}
-
-      {/* Grid */}
-      <section className="mx-auto max-w-6xl px-6 py-8 pb-24">
-        {selectedStage === "human" ? (
-          <div className="mb-12">
-            <div className="space-y-12">
-              {stageSections.human.map((section, idx) => (
-                <div key={idx}>
-                  <div className="mb-6">
-                    <h3 className="text-2xl font-semibold text-neutral-900">{section.main}</h3>
-                    <p className="text-sm text-neutral-600 mt-1">{section.sub}</p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {filtered
-                      .filter((item) => {
-                        if (idx === 0) return ["design-as-a-research-tool", "physical-ai"].includes(item.slug);
-                        if (idx === 1) return ["designing-next-gen-ai-products", "personalization"].includes(item.slug);
-                        return false;
-                      })
-                      .map((item) => renderCard(item))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : selectedStage !== "All" && stageSections[selectedStage] ? (
-          <div className="mb-12">
-            <div className="space-y-12">
-              {stageSections[selectedStage].map((section, idx) => {
-                const sectionSlugs: Record<string, string[][]> = {
-                  chatbot: [
-                    ["reimagining-the-chatbot", "google-cloud", "select-fill-with-prompts"],
-                    ["designing-for-conversations-that-earn-trust"],
-                  ],
-                };
-                const slugsForSection = sectionSlugs[selectedStage]?.[idx];
-                const cards = slugsForSection
-                  ? filtered.filter((item) => slugsForSection.includes(item.slug))
-                  : filtered;
-                return (
-                  <div key={idx}>
-                    <div className="mb-6">
-                      <h3 className="text-2xl font-semibold text-neutral-900">{section.main}</h3>
-                      <p className="text-sm text-neutral-600 mt-1">{section.sub}</p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                      {cards.map((item) => renderCard(item))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((item) => renderCard(item))}
-            </div>
-            {filtered.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-neutral-300 py-16 text-center text-sm text-neutral-500">
-                Nothing here yet — try another filter.
-              </div>
-            )}
-          </>
-        )}
-      </section>
-
-      <footer className="mx-auto max-w-6xl px-6 pb-10 text-center text-xs text-neutral-500">
-        © 2026 — sketched with fountain pen & paper
-      </footer>
-
-      {/* Prototype Modal */}
-      {showPrototypeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 flex items-center justify-between p-6 border-b border-neutral-200 bg-white">
-              <h2 className="text-2xl font-medium text-neutral-900">What do prototypes prototype?</h2>
-              <button
-                onClick={() => setShowPrototypeModal(false)}
-                className="text-neutral-500 hover:text-neutral-900 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="p-6 space-y-8">
-              {/* Triangle diagram */}
-              <div>
-                <img
-                  src="/articles/prototype-triangle.png"
-                  alt="What do prototypes prototype triangle diagram"
-                  className="w-full rounded-lg border border-neutral-200"
-                />
-              </div>
-
-              {/* Explanation */}
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Implementation</h3>
-                  <p className="text-neutral-600">
-                    Testing whether something is technically possible. What can be built? What are the
-                    constraints? How do different technologies and approaches perform?
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Look & Feel</h3>
-                  <p className="text-neutral-600">
-                    Exploring how something will be perceived and experienced. What does it feel like to
-                    use? What's the tone, aesthetic, and emotional response? How does it move and
-                    respond?
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Role</h3>
-                  <p className="text-neutral-600">
-                    Understanding what place this thing occupies in the world. What's its purpose? Who
-                    is it for? What problems does it solve? How does it fit into larger systems?
-                  </p>
-                </div>
-
-                <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-                  <p className="text-sm text-neutral-600 mb-3">
-                    Read the original paper by Elisa Giaccardi:
-                  </p>
-                  <a
-                    href="https://hci.stanford.edu/courses/cs247/2012/readings/WhatDoPrototypesPrototype.pdf"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-primary font-medium hover:underline"
-                  >
-                    What Do Prototypes Prototype? (PDF) →
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+        <span className="text-base leading-none">{playing ? "⏸" : "▶"}</span>
+        <span>Baby Salt · Chang</span>
+        <span className="font-mono text-[11px] text-white/40">0:{String(seekTo).padStart(2, "0")}</span>
+      </button>
+      {playing && <span className="text-xs text-white/40 italic">this one always gets me</span>}
     </div>
   );
 }
 
+// ── Dear footer ───────────────────────────────────────────────────────────
 
+function DearFooter() {
+  const [mode, setMode] = useState<DearMode>("recruiter");
+
+  const letters: Record<DearMode, { label: string; salutation: string; body: ReactNode; cta?: ReactNode }> = {
+    recruiter: {
+      label: "Recruiter",
+      salutation: "Dear recruiter,",
+      body: (
+        <>
+          <p>I have an interdisciplinary background — design, engineering, research, a bit of philosophy — and I've stopped apologizing for not fitting neatly into one lane. You can use me as a design engineer. I can prototype, write code, run user research, and translate between technical and design teams.</p>
+          <p>But honestly? The best way to use me is to hand me a messy, unsolved problem and ask what we should even be building. That's where I come alive — not executing a pre-defined spec, but questioning whether we have the right spec in the first place.</p>
+          <p>I think a lot about innovation. Not the word, but the actual practice of it — how you create conditions for genuinely new things to emerge. If your team is figuring out what to build next, rather than just how to build it, I'd love to talk.</p>
+        </>
+      ),
+      cta: (
+        <a href="https://www.linkedin.com/in/qiyu-hu/" target="_blank" rel="noopener noreferrer"
+          className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm text-white/70 transition-all hover:border-white/60 hover:text-white">
+          LinkedIn →
+        </a>
+      ),
+    },
+    dating: {
+      label: "Dating someone?",
+      salutation: "Dear you,",
+      body: (
+        <>
+          <p>I genuinely appreciate the effort you put into tracking me down. Internet research is a skill. That's a good sign.</p>
+          <p>Fair warning though: digital me is a portfolio. Real me has strong opinions about menus, theories about why people choose the places they choose, and a tendency to ask follow-up questions at dinner. Which is either charming or a lot, depending on who you ask.</p>
+          <p>The most efficient next step is just to meet. Not another tab, not another scroll. Hit the button, pick a time. I'm genuinely better in person, and I'll make it worth the experiment.</p>
+        </>
+      ),
+      cta: (
+        <a href="https://calendly.com/huqiyu416" target="_blank" rel="noopener noreferrer"
+          className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm text-neutral-900 transition-all hover:bg-neutral-100">
+          Book a time →
+        </a>
+      ),
+    },
+    "future-self": {
+      label: "Future me",
+      salutation: "Dear future me,",
+      body: (
+        <>
+          <p>I'm really proud of you.</p>
+          <p>Not for the things you built, or the titles, or the places you worked. For staying curious — about yourself, about this world, and about the strange and surprising connections between the two. A lot of people stop doing that.</p>
+          <p>You kept asking questions when it would've been easier to just have the answer. Keep going.</p>
+        </>
+      ),
+      cta: <MusicPlayer />,
+    },
+  };
+
+  const content = letters[mode];
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center px-6">
+      <p className="absolute top-8 text-[11px] uppercase tracking-[0.2em] text-white/20">scroll up to explore</p>
+      <div className="w-full max-w-xl">
+        <div className="mb-10 flex flex-wrap gap-2">
+          {(Object.keys(letters) as DearMode[]).map((key) => (
+            <button key={key} onClick={() => setMode(key)}
+              className={["rounded-full px-4 py-1.5 text-sm transition-all",
+                mode === key ? "bg-white text-neutral-900" : "border border-white/15 text-white/50 hover:border-white/40 hover:text-white/80",
+              ].join(" ")}>
+              {letters[key].label}
+            </button>
+          ))}
+        </div>
+        <p className="mb-5 text-sm text-white/35">{content.salutation}</p>
+        <div className="space-y-4 text-[17px] leading-relaxed text-white/80 [&>p]:m-0">{content.body}</div>
+        {content.cta}
+        <p className="mt-8 text-sm text-white/30">— Qiyu</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Two circles diagram ────────────────────────────────────────────────────
+
+function TwoCirclesDiagram() {
+  const [hovered, setHovered] = useState<string | null>(null);
+
+  const pathStyle = (id: string) => ({
+    stroke: hovered === id ? "#404040" : hovered ? "#d4d4d4" : "#a3a3a3",
+    strokeWidth: hovered === id ? 2 : 1.5,
+    transition: "stroke 180ms, stroke-width 180ms",
+  });
+  const textStyle = (id: string): React.CSSProperties => ({
+    fill: hovered === id ? "#404040" : hovered ? "#d4d4d4" : "#a3a3a3",
+    transition: "fill 180ms",
+  });
+  const seg = (id: string, children: ReactNode) => (
+    <g onMouseEnter={() => setHovered(id)} onMouseLeave={() => setHovered(null)} style={{ cursor: "default" }}>
+      {children}
+    </g>
+  );
+
+  return (
+    <svg viewBox="0 0 640 230" fill="none" className="w-full max-w-2xl" style={{ overflow: "visible" }}>
+      <defs>
+        <marker id="arr" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto">
+          <polygon points="0 0, 7 3, 0 6" fill={hovered ? "#d4d4d4" : "#a3a3a3"} />
+        </marker>
+        <marker id="arr-h" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto">
+          <polygon points="0 0, 7 3, 0 6" fill="#404040" />
+        </marker>
+      </defs>
+      <circle cx="110" cy="115" r="50" stroke={hovered ? "#d4d4d4" : "#737373"} strokeWidth="1.5" style={{ transition: "stroke 180ms" }} />
+      <text x="110" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={hovered ? "#d4d4d4" : "#404040"} style={{ transition: "fill 180ms" }}>me</text>
+      <circle cx="530" cy="115" r="50" stroke={hovered ? "#d4d4d4" : "#737373"} strokeWidth="1.5" style={{ transition: "stroke 180ms" }} />
+      <text x="530" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={hovered ? "#d4d4d4" : "#404040"} style={{ transition: "fill 180ms" }}>others</text>
+      {seg("behave", <>
+        <path d="M 155 98 Q 320 52 485 98" {...pathStyle("behave")} markerEnd={hovered === "behave" ? "url(#arr-h)" : "url(#arr)"} />
+        <text x="320" y="44" textAnchor="middle" fontSize="11" style={textStyle("behave")}>how I express / behave</text>
+      </>)}
+      {seg("others-interpret", <>
+        <path d="M 485 98 Q 572 115 485 132" {...pathStyle("others-interpret")} strokeDasharray="5 3" />
+        <text x="584" y="109" textAnchor="start" fontSize="10" style={textStyle("others-interpret")}>how others</text>
+        <text x="584" y="122" textAnchor="start" fontSize="10" style={textStyle("others-interpret")}>interpret</text>
+      </>)}
+      {seg("others-say", <>
+        <path d="M 485 132 Q 320 178 155 132" {...pathStyle("others-say")} markerEnd={hovered === "others-say" ? "url(#arr-h)" : "url(#arr)"} />
+        <text x="320" y="198" textAnchor="middle" fontSize="11" style={textStyle("others-say")}>what others do or say</text>
+      </>)}
+      {seg("i-interpret", <>
+        <path d="M 155 132 Q 68 115 155 98" {...pathStyle("i-interpret")} strokeDasharray="5 3" />
+        <text x="48" y="109" textAnchor="end" fontSize="10" style={textStyle("i-interpret")}>how I</text>
+        <text x="48" y="122" textAnchor="end" fontSize="10" style={textStyle("i-interpret")}>interpret</text>
+      </>)}
+    </svg>
+  );
+}
+
+// ── Unified page header (scroll-transition nav + section tabs) ─────────────
+
+function WorkPageHeader() {
+  const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 320);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+    SECTION_TABS.forEach(({ id }) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
+        { threshold: 0.25, rootMargin: "-80px 0px -35% 0px" }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
+
+  const scrollToSection = (id: string) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  return (
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-neutral-200/50 transition-all duration-300">
+      {/* Row 1: main nav */}
+      <div className="mx-auto max-w-6xl px-6">
+        <div className={`flex items-center gap-4 transition-all duration-300 ${scrolled ? "py-2.5" : "py-4"}`}>
+
+          {/* Badge — fades when scrolled */}
+          <div className={`flex-1 transition-all duration-300 ${scrolled ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+            <Link
+              to="/what-do-prototypes-prototype"
+              className="hidden md:inline-flex group relative items-center gap-2 rounded-full bg-white px-3 py-1 text-xs text-neutral-600 shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:bg-neutral-900 hover:text-white transition-all overflow-hidden whitespace-nowrap"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+              <span className="transition-all duration-300 group-hover:-translate-x-4 group-hover:opacity-0">currently AI prototyper @Apple</span>
+              <span className="absolute left-6 translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap">What do prototypes prototype?</span>
+            </Link>
+          </div>
+
+          {/* Page nav pills */}
+          <nav className="flex items-center gap-1 rounded-full border border-neutral-200 bg-white p-1 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+            {NAV_ITEMS.map((l) => (
+              <Link key={l} to={navHref(l)}
+                className={["rounded-full px-4 py-1.5 text-sm transition-colors",
+                  l === "work" ? "bg-neutral-900 text-white" : "text-neutral-600 hover:text-neutral-900",
+                ].join(" ")}>
+                {l}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Qiyu — fades when scrolled */}
+          <div className={`flex-1 flex justify-end transition-all duration-300 ${scrolled ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+            <Link to="/" className="hidden md:block text-sm font-medium text-neutral-900">Qiyu</Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: section tabs — slides in on scroll */}
+      <div
+        className="overflow-hidden transition-all duration-300"
+        style={{ maxHeight: scrolled ? "52px" : "0px", opacity: scrolled ? 1 : 0 }}
+      >
+        <div className="border-t border-neutral-100 mx-auto max-w-6xl px-6">
+          <div className="flex gap-1 py-2.5 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
+            {SECTION_TABS.map(({ id, label }) => (
+              <button key={id} onClick={() => scrollToSection(id)}
+                className={["rounded-full px-4 py-1.5 text-sm whitespace-nowrap transition-all",
+                  activeSection === id ? "bg-neutral-900 text-white" : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100",
+                ].join(" ")}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────
+
+function Card({
+  title, meta, href, media, badge, isExternal, slug, onHoverChange, onMouseMove,
+}: {
+  title: string; meta: string; href?: string; media: CardMedia;
+  badge?: string; isExternal?: boolean; slug?: string;
+  onHoverChange?: (slug: string | null) => void;
+  onMouseMove?: (e: React.MouseEvent) => void;
+}) {
+  const isVideo = media.type === "video";
+  // Original card size: ~340px wide, matching the old 3-column grid proportions
+  const cls = "group relative rounded-2xl bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] block w-[340px] shrink-0 snap-start";
+
+  const handlers = {
+    onMouseEnter(e: React.MouseEvent<HTMLElement>) {
+      const v = e.currentTarget.querySelector("video");
+      if (v && media.type === "video") { v.currentTime = media.startTime ?? 0; v.play(); }
+      onHoverChange?.(slug ?? null);
+    },
+    onMouseLeave(e: React.MouseEvent<HTMLElement>) {
+      const v = e.currentTarget.querySelector("video");
+      if (v) { v.pause(); v.currentTime = 0; }
+      onHoverChange?.(null);
+    },
+    onMouseMove,
+  };
+
+  const inner = (
+    <>
+      {badge && (
+        <span className="absolute top-5 right-5 z-10 rounded-full bg-neutral-900/80 px-2.5 py-1 text-[10px] uppercase tracking-wide text-white backdrop-blur-sm">
+          {badge}
+        </span>
+      )}
+      <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-white">
+        {media.type === "video" && (
+          <video src={`${media.src}#t=0.001`} preload="metadata" muted loop playsInline
+            className="h-full w-full object-cover"
+            style={media.transform ? { transform: media.transform } : undefined} />
+        )}
+        {media.type === "image" && (
+          <img src={media.src} alt={title}
+            className={`h-full w-full ${media.fit === "contain" ? "object-contain p-6" : "object-cover"}`} />
+        )}
+        {media.type === "concept" && (
+          <div className="h-full w-full flex flex-col items-center justify-center gap-3 px-8 py-6"
+            style={{ background: media.gradient ?? "linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%)" }}>
+            {media.icon && <span className="text-3xl">{media.icon}</span>}
+            {media.label && <p className="text-xs text-neutral-500 text-center leading-relaxed">{media.label}</p>}
+          </div>
+        )}
+        <CardIcon hasVideo={isVideo} />
+      </div>
+      <div className="flex items-start gap-4 px-2 pb-2 pt-4">
+        <div className="min-w-0">
+          <p className="text-xs text-neutral-500">{meta}</p>
+          <h3 className="mt-1 text-[15px] font-medium text-neutral-900 leading-snug">{title}</h3>
+        </div>
+      </div>
+    </>
+  );
+
+  if (!href) return <div className={cls} {...handlers}>{inner}</div>;
+  return (
+    <a href={href} target={isExternal ? "_blank" : undefined} rel={isExternal ? "noopener noreferrer" : undefined}
+      className={cls} {...handlers}>{inner}</a>
+  );
+}
+
+// ── Carousel section (Apple-style: indented start, overflow right) ─────────
+
+function CarouselSection({
+  sectionId, title, question, seeAllHref, seeAllLabel, children,
+}: {
+  sectionId: string; title: string; question: string;
+  seeAllHref?: string; seeAllLabel?: string; children: ReactNode;
+}) {
+  return (
+    <section id={sectionId} className="py-12 scroll-mt-24 bg-background">
+      {/* Header — constrained to content column, left-aligned */}
+      <div className="mx-auto max-w-6xl px-6 mb-7">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h2 className="text-[22px] font-semibold text-neutral-900 leading-tight">{title}</h2>
+            <p className="mt-1.5 text-sm text-neutral-500 max-w-md leading-relaxed">{question}</p>
+          </div>
+          {seeAllHref && (
+            <a href={seeAllHref} className="shrink-0 mt-0.5 text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors whitespace-nowrap">
+              {seeAllLabel ?? "See all"} →
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Carousel — starts at the same left edge as the title, overflows right */}
+      <div
+        className="overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
+        style={{
+          scrollbarWidth: "none",
+          paddingLeft: "max(1.5rem, calc((100vw - 72rem) / 2 + 1.5rem))",
+        }}
+      >
+        <div className="flex gap-5 w-max pb-4 pr-6">
+          {children}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Divider ───────────────────────────────────────────────────────────────
+
+function Divider() {
+  return <div className="mx-auto max-w-6xl px-6"><div className="border-t border-neutral-100" /></div>;
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────
+
+function Index() {
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
+  const hoveredSections = hoveredSlug ? (ARTICLE_META[hoveredSlug]?.sections ?? []) : [];
+  const hoverKind = hoveredSlug && ARTICLE_META[hoveredSlug]?.sections ? "Article" : null;
+
+  const cursorHandlers = {
+    onHoverChange: setHoveredSlug,
+    onMouseMove: (e: React.MouseEvent) => setCursorPos({ x: e.clientX, y: e.clientY }),
+  };
+
+  return (
+    <div className="relative">
+      {/* ── Cursor TOC tooltip ── */}
+      {hoveredSlug && hoveredSections.length > 0 && (
+        <div className="fixed z-50 pointer-events-none" style={{ left: cursorPos.x + 16, top: cursorPos.y + 16 }}>
+          <div className="bg-neutral-900 text-white rounded-2xl px-5 py-4 shadow-xl max-w-[220px]">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-semibold mb-3">{hoverKind}</p>
+            <ul className="space-y-2">
+              {hoveredSections.map((s, i) => <li key={i} className="text-[12px] font-semibold text-white leading-snug">{s}</li>)}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* ── Dear footer: fixed behind, revealed as white content scrolls away ── */}
+      <div className="fixed inset-0 z-0 bg-neutral-950">
+        <DearFooter />
+      </div>
+
+      {/* ── Main white content: scrolls on top of Dear footer ── */}
+      <div className="relative z-10 bg-background" style={{ boxShadow: "0 0 80px 20px rgba(0,0,0,0.18)" }}>
+        <WorkPageHeader />
+
+        {/* ── Framework: centered, distinct bg, highlighted landing section ── */}
+        <section className="bg-neutral-50 py-20">
+          <div className="mx-auto max-w-3xl px-6 text-center">
+            <p className="mb-3 text-[11px] uppercase tracking-[0.16em] text-neutral-400">the frame</p>
+            <h2 className="mb-3 text-[26px] font-semibold text-neutral-900">
+              Human interaction has four seams
+            </h2>
+            <p className="mb-12 text-sm text-neutral-500 leading-relaxed max-w-md mx-auto">
+              Every exchange runs through them. Somewhere in each one, something gets lost.
+              Everything I prototype lives at one of these four moments.
+            </p>
+            <div className="flex justify-center">
+              <TwoCirclesDiagram />
+            </div>
+          </div>
+        </section>
+
+        <Divider />
+
+        {/* ── 01 Expression ── */}
+        <CarouselSection
+          sectionId="expression"
+          title="New ways to express"
+          question="If interfaces weren't limited to text fields and submit buttons, how might humans convey presence, emotion, and intent?"
+          seeAllHref="/play"
+          seeAllLabel="See all explorations"
+        >
+          <Card title="Reimagining the chatbot" meta="Prototype · Collection" href="/reimagining-the-chatbot" slug="reimagining-the-chatbot" {...cursorHandlers} media={{ type: "image", src: "/articles/chatbot-thumb.png" }} />
+          <Card title="Hand gesture interactions" meta="Vibe-coding · Embodied" href="/play" {...cursorHandlers} media={{ type: "video", src: "/articles/hand-gesture.mp4" }} />
+          <Card title="Voice interaction" meta="Vibe-coding · Voice" href="/play" {...cursorHandlers} media={{ type: "video", src: "/articles/voice.mp4" }} />
+          <Card title="Always here" meta="Chatbot · Presence" href="/reimagining-the-chatbot" {...cursorHandlers} media={{ type: "video", src: "/articles/chatbot-always-here.mp4", transform: "scale(2.2) translateX(-12%)" }} />
+          <Card title="Hello Humans" meta="Non-software · Analog" href="/hello-humans" {...cursorHandlers} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
+          <Card title="Physical AI" meta="Research · Embodied" href="/physical-ai" slug="physical-ai" {...cursorHandlers} media={{ type: "image", src: "/articles/physical-ai-thumb.png" }} />
+        </CarouselSection>
+
+        <Divider />
+
+        {/* ── 02 Self-knowledge ── */}
+        <CarouselSection
+          sectionId="self-knowledge"
+          title="Knowing your unknowns"
+          question="How can technology help someone discover what they don't know — or that they don't know it?"
+          seeAllHref="/think"
+          seeAllLabel="See frameworks"
+        >
+          <Card title="AIOS — seeing your own blindspots" meta="Prototype · Self-reflection" badge="in progress" {...cursorHandlers}
+            media={{ type: "concept", icon: "◎", label: "A tool to map the known, unknown, and unknown-unknown.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
+          <Card title="Knowledge graph visualization" meta="Prototype · Reasoning" href="/reimagining-the-chatbot" {...cursorHandlers}
+            media={{ type: "video", src: "/articles/chatbot-knowledge-graph.mp4", transform: "scale(2) translateY(20%)" }} />
+          <Card title="Personalization" meta="Research · AI Philosophy" href="/personalization" slug="personalization" {...cursorHandlers} media={{ type: "image", src: "/articles/personalization-thumb.png" }} />
+          <Card title="Me · Others · Think · Do" meta="Framework · Quadrant" href="/think" {...cursorHandlers}
+            media={{ type: "concept", gradient: "linear-gradient(135deg,#fafafa 0%,#efefef 100%)", label: "A 2×2 for mapping where assumptions live versus where behavior happens." }} />
+          <Card title="Design as a research tool" meta="Case study · Methods" href="/design-as-a-research-tool" slug="design-as-a-research-tool" {...cursorHandlers} media={{ type: "image", src: "/articles/design-as-research-tool-thumb.png" }} />
+        </CarouselSection>
+
+        <Divider />
+
+        {/* ── 03 Interpretation gap ── */}
+        <CarouselSection
+          sectionId="interpretation"
+          title="When meaning gets lost"
+          question="The same message lands differently for everyone. How might design work with that gap instead of pretending it doesn't exist?"
+        >
+          <Card title="Designing for conversations that earn trust" meta="Research · Trust" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...cursorHandlers} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
+          <Card title="A2UI — Generative UI" meta="Prototype · Adaptive" href="/a2ui-generative" slug="a2ui-generative" {...cursorHandlers} media={{ type: "image", src: "/articles/a2ui-thumb.svg", fit: "contain" }} />
+          <Card title="Designing Next-Gen AI Products" meta="Article · Design systems" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...cursorHandlers} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
+          <Card title="Proactive prototyping" meta="Prototype · Testing" href="/proactive" slug="proactive" {...cursorHandlers} media={{ type: "image", src: "/articles/proactive-thumb.png" }} />
+          <Card title="Google Cloud — Conversational AI" meta="Prototype · 0→1" href="/google-cloud" slug="google-cloud" {...cursorHandlers} media={{ type: "image", src: "/articles/google-cloud-thumb.png" }} />
+          <Card title="What do prototypes prototype?" meta="Article · Research method" href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...cursorHandlers} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg", fit: "contain" }} />
+        </CarouselSection>
+
+        <Divider />
+
+        {/* ── 04 Listening ── */}
+        <CarouselSection
+          sectionId="listening"
+          title="What others bring"
+          question="What happens when you create conditions for people to be genuinely honest about what they value — and you actually listen?"
+          seeAllHref="/listen"
+          seeAllLabel="Open the graph"
+        >
+          <Card title="Values from people who shaped how I think" meta="Interactive graph · /listen" href="/listen" {...cursorHandlers}
+            media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
+          <Card title="Meet the stranger challenge" meta="Experiment · Connection" href="https://www.linkedin.com/feed/update/urn:li:activity:7404207024164683776/" isExternal {...cursorHandlers}
+            media={{ type: "image", src: "/articles/meet-stranger-calendly.png" }} />
+          <Card title="Hosting events @Apple" meta="Community · IRL" {...cursorHandlers}
+            media={{ type: "concept", gradient: "linear-gradient(135deg,#f5f3ff 0%,#ede9fe 100%)", label: "5 events tracking a year of mental shifts — from vibe coding to questioning AI." }} />
+        </CarouselSection>
+
+        {/* Copyright */}
+        <div className="mx-auto max-w-6xl px-6 pb-10 pt-4 text-center text-xs text-neutral-400">
+          © 2026 — sketched with fountain pen & paper
+        </div>
+      </div>
+
+      {/* ── Scroll spacer: transparent so Dear footer shows through ── */}
+      <div className="h-screen" />
+    </div>
+  );
+}
