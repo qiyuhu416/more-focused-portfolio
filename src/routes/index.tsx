@@ -142,8 +142,8 @@ function DearFooter() {
 
   const letters: Record<DearMode, { body: ReactNode; cta?: ReactNode }> = {
     recruiter: {
-      body: (<><p>I have an interdisciplinary background in UX design, programming, Human-Computer Interaction research, a bit of overthinking.</p><p>The best way to use me is to hand me a messy, unsolved problem and ask what we should even be building. That's where I come alive.</p><p>I think a lot about innovation — not the word, but the actual practice of it. If your team is figuring out what to build next, rather than just how, I'd love to talk.</p></>),
-      cta: <a href="https://www.linkedin.com/in/qiyu-hu/" target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm text-white/70 hover:border-white/60 hover:text-white transition-all">LinkedIn →</a>,
+      body: (<><p>I have an interdisciplinary background in UX design, programming, Human-Computer Interaction research, a bit of overthinking.</p><p>You could hire me as a design engineer, but I'd say the best way to use me is to hand me a messy, unsolved problem and ask what we should even be building.</p><p>I think a lot about innovation and work on interesting problems. If your team is figuring out what to build next and love to be a bit crazier, I'd love to talk.</p></>),
+      cta: <a href="https://calendly.com/huqiyu416" target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm text-neutral-900 hover:bg-neutral-100 transition-all">Book a time →</a>,
     },
     "future-self": {
       body: (<><p>How are you?</p><p>Please know that I am very proud of you, for staying curious about yourself, about this world, and about the connections between the two.</p><p>How are you now with overthinking?</p></>),
@@ -285,7 +285,7 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI: _othersI
     transition: `opacity 0.5s ${delay}s ease`,
   });
 
-  const hw: React.CSSProperties = { fontFamily: "'Caveat', cursive" };
+  const hw: React.CSSProperties = { fontFamily: "'Kalam', cursive" };
 
   return (
     <svg viewBox="0 0 660 240" fill="none" className="w-full">
@@ -296,8 +296,8 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI: _othersI
       <g style={{ ...fade(0.05), transition: `opacity 0.5s 0.05s ease, stroke 160ms` }}>
         {roughCircles.others.map((p, i) => <path key={i} d={p.d} stroke={p.stroke} strokeWidth={p.strokeWidth} fill="none" />)}
       </g>
-      <text x="110" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ ...fade(0.08), transition: `opacity 0.5s 0.08s ease, fill 160ms` }}>me</text>
-      <text x="530" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ ...fade(0.10), transition: `opacity 0.5s 0.10s ease, fill 160ms` }}>others</text>
+      <text x="110" y="120" textAnchor="middle" fontSize="14" fill={ct} style={{ ...fade(0.08), ...hw, transition: `opacity 0.5s 0.08s ease, fill 160ms` }}>me</text>
+      <text x="530" y="120" textAnchor="middle" fontSize="14" fill={ct} style={{ ...fade(0.10), ...hw, transition: `opacity 0.5s 0.10s ease, fill 160ms` }}>others</text>
 
       {/* Top arc: how I express */}
       {seg("behave", <g style={fade(0.15)}>

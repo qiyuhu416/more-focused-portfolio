@@ -45,7 +45,7 @@ function ThinkComponent() {
                 <line x1="64" y1="15" x2="64" y2="35" stroke="#1a1a1a" strokeWidth="1" strokeDasharray="3 2"/>
               </svg>
             </div>
-            <h3 className="font-medium text-lg text-neutral-900 mb-2 group-hover:underline">Analysis-synthesis bridge</h3>
+            <h3 className="font-medium text-lg text-neutral-900 mb-2 ">Analysis-synthesis bridge</h3>
             <p className="text-neutral-600 text-sm">The best model by Hugh Dubberly! It has been helping me intentionally practice "thinking outside the box" the mindset</p>
           </a>
 
@@ -64,7 +64,7 @@ function ThinkComponent() {
                 <circle cx="40" cy="42" r="3" fill="#1a1a1a"/>
               </svg>
             </div>
-            <h3 className="font-medium text-lg text-neutral-900 mb-2 group-hover:underline">Me · Others · Think · Do</h3>
+            <h3 className="font-medium text-lg text-neutral-900 mb-2 ">Me · Others · Think · Do</h3>
             <p className="text-neutral-600 text-sm">2×2 is just a cool way to map out the situations and help me see my own "unknown-unkonwn"s</p>
           </button>
 
@@ -124,35 +124,40 @@ function ThinkComponent() {
               excerpt: "A reflection on what we're actually testing when we prototype.",
               date: "Apr 2026",
               readTime: "8 min",
-            },
-            {
-              title: "How I use AI to create",
-              excerpt: "Prototyping as research, and why AI should augment—not replace—thinking.",
-              date: "Apr 2026",
-              readTime: "5 min",
+              href: "/what-do-prototypes-prototype",
             },
             {
               title: "Making design fun",
               excerpt: "On curiosity, vibe-coding, and why creation should feel like play.",
               date: "Apr 2026",
               readTime: "5 min",
+              href: "/making-design-fun",
             },
             {
               title: "Designing Next-Gen AI Products",
               excerpt: "Mapping UX to capability. Lessons from conversational AI and human-AI co-writing.",
               date: "Apr 2026",
               readTime: "8 min",
+              href: "/designing-next-gen-ai-products",
+            },
+            {
+              title: "How I use AI to create",
+              excerpt: "Prototyping as research, and why AI should augment—not replace—thinking.",
+              date: "Apr 2026",
+              readTime: "5 min",
+              href: null,
             },
             {
               title: "Cheap edges, expensive corners",
               excerpt: "Where quality actually accrues in an interface.",
               date: "Apr 2026",
               readTime: "5 min",
+              href: null,
             },
-          ].map((article) => (
+          ].map((article) => article.href ? (
             <a
               key={article.title}
-              href="/"
+              href={article.href}
               className="block rounded-lg border border-neutral-200 p-4 hover:border-neutral-400 hover:bg-neutral-50 transition-all"
             >
               <div className="flex items-start justify-between gap-4">
@@ -168,6 +173,24 @@ function ThinkComponent() {
                 <span className="text-neutral-400">→</span>
               </div>
             </a>
+          ) : (
+            <div
+              key={article.title}
+              className="block rounded-lg border border-neutral-100 p-4 opacity-40 cursor-default"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-medium text-neutral-900">{article.title}</h3>
+                  <p className="mt-1 text-sm text-neutral-600">{article.excerpt}</p>
+                  <div className="mt-2 flex gap-2 text-xs text-neutral-500">
+                    <span>{article.date}</span>
+                    <span>·</span>
+                    <span>{article.readTime}</span>
+                  </div>
+                </div>
+                <span className="text-[10px] text-neutral-400 mt-1">soon</span>
+              </div>
+            </div>
           ))}
         </div>
       </section>

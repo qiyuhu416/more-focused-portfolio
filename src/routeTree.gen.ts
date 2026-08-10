@@ -18,7 +18,6 @@ import { Route as DesigningForConversationsThatEarnTrustRouteImport } from './ro
 import { Route as DesigningNextGenAiProductsRouteImport } from './routes/designing-next-gen-ai-products'
 import { Route as GoogleCloudRouteImport } from './routes/google-cloud'
 import { Route as HelloHumansRouteImport } from './routes/hello-humans'
-import { Route as HumanAiResearchRouteImport } from './routes/human-ai-research'
 import { Route as ListenRouteImport } from './routes/listen'
 import { Route as MakingDesignFunRouteImport } from './routes/making-design-fun'
 import { Route as PersonalizationRouteImport } from './routes/personalization'
@@ -75,11 +74,6 @@ const GoogleCloudRoute = GoogleCloudRouteImport.update({
 const HelloHumansRoute = HelloHumansRouteImport.update({
   id: '/hello-humans',
   path: '/hello-humans',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HumanAiResearchRoute = HumanAiResearchRouteImport.update({
-  id: '/human-ai-research',
-  path: '/human-ai-research',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListenRoute = ListenRouteImport.update({
@@ -144,7 +138,6 @@ export interface FileRoutesByFullPath {
   '/designing-next-gen-ai-products': typeof DesigningNextGenAiProductsRoute
   '/google-cloud': typeof GoogleCloudRoute
   '/hello-humans': typeof HelloHumansRoute
-  '/human-ai-research': typeof HumanAiResearchRoute
   '/listen': typeof ListenRoute
   '/making-design-fun': typeof MakingDesignFunRoute
   '/personalization': typeof PersonalizationRoute
@@ -166,7 +159,6 @@ export interface FileRoutesByTo {
   '/designing-next-gen-ai-products': typeof DesigningNextGenAiProductsRoute
   '/google-cloud': typeof GoogleCloudRoute
   '/hello-humans': typeof HelloHumansRoute
-  '/human-ai-research': typeof HumanAiResearchRoute
   '/listen': typeof ListenRoute
   '/making-design-fun': typeof MakingDesignFunRoute
   '/personalization': typeof PersonalizationRoute
@@ -189,7 +181,6 @@ export interface FileRoutesById {
   '/designing-next-gen-ai-products': typeof DesigningNextGenAiProductsRoute
   '/google-cloud': typeof GoogleCloudRoute
   '/hello-humans': typeof HelloHumansRoute
-  '/human-ai-research': typeof HumanAiResearchRoute
   '/listen': typeof ListenRoute
   '/making-design-fun': typeof MakingDesignFunRoute
   '/personalization': typeof PersonalizationRoute
@@ -213,7 +204,6 @@ export interface FileRouteTypes {
     | '/designing-next-gen-ai-products'
     | '/google-cloud'
     | '/hello-humans'
-    | '/human-ai-research'
     | '/listen'
     | '/making-design-fun'
     | '/personalization'
@@ -235,7 +225,6 @@ export interface FileRouteTypes {
     | '/designing-next-gen-ai-products'
     | '/google-cloud'
     | '/hello-humans'
-    | '/human-ai-research'
     | '/listen'
     | '/making-design-fun'
     | '/personalization'
@@ -257,7 +246,6 @@ export interface FileRouteTypes {
     | '/designing-next-gen-ai-products'
     | '/google-cloud'
     | '/hello-humans'
-    | '/human-ai-research'
     | '/listen'
     | '/making-design-fun'
     | '/personalization'
@@ -280,7 +268,6 @@ export interface RootRouteChildren {
   DesigningNextGenAiProductsRoute: typeof DesigningNextGenAiProductsRoute
   GoogleCloudRoute: typeof GoogleCloudRoute
   HelloHumansRoute: typeof HelloHumansRoute
-  HumanAiResearchRoute: typeof HumanAiResearchRoute
   ListenRoute: typeof ListenRoute
   MakingDesignFunRoute: typeof MakingDesignFunRoute
   PersonalizationRoute: typeof PersonalizationRoute
@@ -356,13 +343,6 @@ declare module '@tanstack/react-router' {
       path: '/hello-humans'
       fullPath: '/hello-humans'
       preLoaderRoute: typeof HelloHumansRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/human-ai-research': {
-      id: '/human-ai-research'
-      path: '/human-ai-research'
-      fullPath: '/human-ai-research'
-      preLoaderRoute: typeof HumanAiResearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/listen': {
@@ -449,7 +429,6 @@ const rootRouteChildren: RootRouteChildren = {
   DesigningNextGenAiProductsRoute: DesigningNextGenAiProductsRoute,
   GoogleCloudRoute: GoogleCloudRoute,
   HelloHumansRoute: HelloHumansRoute,
-  HumanAiResearchRoute: HumanAiResearchRoute,
   ListenRoute: ListenRoute,
   MakingDesignFunRoute: MakingDesignFunRoute,
   PersonalizationRoute: PersonalizationRoute,

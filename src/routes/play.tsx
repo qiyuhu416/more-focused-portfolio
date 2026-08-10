@@ -89,15 +89,15 @@ function PlayComponent() {
   const boardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setPlaced([{ id: 0, src: PLAY_IMAGES[0], x: window.innerWidth / 2 - 120, y: 120 }]);
+    setPlaced([{ id: 0, src: PLAY_IMAGES[0], x: window.innerWidth / 2 - 70, y: 90 }]);
   }, []);
 
   const handlePageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     setPlaced(prev => [...prev, {
       id: Date.now(),
       src: PLAY_IMAGES[nextIdx % PLAY_IMAGES.length],
-      x: e.pageX - 80,
-      y: e.pageY - 80,
+      x: e.pageX - 60,
+      y: e.pageY - 60,
     }]);
     setNextIdx(i => i + 1);
   };
@@ -184,7 +184,7 @@ function PlayComponent() {
           style={{
             left: img.x,
             top: img.y,
-            maxHeight: "40vh",
+            maxHeight: "160px",
             width: "auto",
             zIndex: 0,
             cursor: drag?.id === img.id ? "grabbing" : "grab",
