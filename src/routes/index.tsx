@@ -117,10 +117,10 @@ function MusicPlayer() {
   }, []);
   return (
     <div className="mt-8 flex items-center gap-3 flex-wrap">
-      <audio ref={audioRef} src="/baby-salt.mp3" preload="none" />
+      <audio ref={audioRef} src="/https://www.youtube.com/watch?v=x6XYAd3D5VY" preload="none" />
       <button onClick={toggle} className="flex items-center gap-2.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white backdrop-blur-sm transition-all hover:bg-white/20 active:scale-95">
         <span className="text-base leading-none">{playing ? "⏸" : "▶"}</span>
-        <span>Baby Salt · Chang</span>
+        <span>Baby Song · Eason Chan</span>
         <span className="font-mono text-[11px] text-white/40">0:{String(seekTo).padStart(2, "0")}</span>
       </button>
       {playing && <span className="text-xs text-white/40 italic">this one always gets me</span>}
@@ -132,8 +132,8 @@ function MusicPlayer() {
 
 const DEAR_LABEL: Record<DearMode, string> = {
   recruiter:    "recruiter",
-  dating:       "you",
   "future-self":"future me",
+  dating:       "friends/ strangers/ dating app matches",
 };
 
 function DearFooter() {
@@ -142,17 +142,18 @@ function DearFooter() {
 
   const letters: Record<DearMode, { body: ReactNode; cta?: ReactNode }> = {
     recruiter: {
-      body: (<><p>I have an interdisciplinary background — design, engineering, research, a bit of philosophy — and I've stopped apologizing for not fitting neatly into one lane.</p><p>The best way to use me is to hand me a messy, unsolved problem and ask what we should even be building. That's where I come alive.</p><p>I think a lot about innovation — not the word, but the actual practice of it. If your team is figuring out what to build next, rather than just how, I'd love to talk.</p></>),
+      body: (<><p>I have an interdisciplinary background in UX design, programming, Human-Computer Interaction research, a bit of overthinking.</p><p>The best way to use me is to hand me a messy, unsolved problem and ask what we should even be building. That's where I come alive.</p><p>I think a lot about innovation — not the word, but the actual practice of it. If your team is figuring out what to build next, rather than just how, I'd love to talk.</p></>),
       cta: <a href="https://www.linkedin.com/in/qiyu-hu/" target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm text-white/70 hover:border-white/60 hover:text-white transition-all">LinkedIn →</a>,
     },
-    dating: {
-      body: (<><p>I genuinely appreciate the effort you put into tracking me down. Internet research is a skill. That's a good sign.</p><p>Fair warning though: digital me is a portfolio. Real me has strong opinions about menus and a tendency to ask follow-up questions at dinner.</p><p>The most efficient next step is just to meet. Hit the button, pick a time. I'm genuinely better in person.</p></>),
-      cta: <a href="https://calendly.com/huqiyu416" target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm text-neutral-900 hover:bg-neutral-100 transition-all">Book a time →</a>,
-    },
     "future-self": {
-      body: (<><p>I'm really proud of you.</p><p>Not for the things you built, or the titles, or the places you worked. For staying curious — about yourself, about this world, and about the strange connections between the two.</p><p>You kept asking questions when it would've been easier to just have the answer. Keep going.</p></>),
+      body: (<><p>How are you?</p><p>Please know that I am very proud of you, for staying curious about yourself, about this world, and about the connections between the two.</p><p>How are you now with overthinking?</p></>),
       cta: <MusicPlayer />,
     },
+    dating: {
+      body: (<><p>Yo.</p></>),
+      cta: <a href="https://calendly.com/huqiyu416" target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm text-neutral-900 hover:bg-neutral-100 transition-all">Book a time →</a>,
+    },
+
   };
   const content = letters[mode];
 
@@ -202,15 +203,22 @@ function DearFooter() {
   );
 }
 
-// ── Two circles diagram ────────────────────────────────────────────────────
+// ── Two circles diagram — clean minimal SVG ────────────────────────────────
 
-function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI, hideLabels }: {
+function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI: _othersIsAI, hideLabels }: {
   activeSegment?: string | null;
   onSegmentClick?: (id: string) => void;
   othersIsAI?: boolean;
   hideLabels?: boolean;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 60);
+    return () => clearTimeout(t);
+  }, []);
+
   const col = (id: string) => {
     if (activeSegment === id) return "#171717";
     if (activeSegment)        return "#d4d4d4";
@@ -218,44 +226,106 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI, hideLabe
     if (hovered)              return "#d4d4d4";
     return "#a3a3a3";
   };
-  const ps = (id: string) => ({
-    stroke: col(id), strokeWidth: (activeSegment === id || hovered === id) ? 2 : 1.5,
-    transition: "stroke 160ms, stroke-width 160ms",
-    cursor: onSegmentClick ? "pointer" as const : "default" as const,
-  });
-  const ts = (id: string): React.CSSProperties => ({ fill: col(id), transition: "fill 160ms", cursor: onSegmentClick ? "pointer" : "default" });
   const anyFocus = !!(activeSegment || hovered);
   const cs = anyFocus ? "#d4d4d4" : "#737373";
   const ct = anyFocus ? "#c4c4c4" : "#404040";
-  const seg = (id: string, children: ReactNode) => (
-    <g onMouseEnter={() => setHovered(id)} onMouseLeave={() => setHovered(null)} onClick={() => onSegmentClick?.(id)}>{children}</g>
+
+  // Rough circles — single wobbly stroke, deterministic seed
+  const roughCircles = useMemo(() => {
+    const gen = rough.generator();
+    const mk = (seed: number) => ({
+      seed, roughness: 0.9, bowing: 1,
+      stroke: cs, strokeWidth: 1.2,
+      fill: "none" as const,
+      disableMultiStroke: true,
+    });
+    return {
+      me:     gen.toPaths(gen.circle(110, 115, 100, mk(42))),
+      others: gen.toPaths(gen.circle(530, 115, 100, mk(43))),
+    };
+  }, [cs]);
+
+  const ps = (id: string, dashed?: boolean): React.SVGProps<SVGPathElement> => ({
+    stroke: col(id),
+    strokeWidth: activeSegment === id || hovered === id ? 1.8 : 1.2,
+    fill: "none",
+    strokeDasharray: dashed ? "5 3" : undefined,
+    style: { transition: "stroke 160ms, stroke-width 160ms" },
+  });
+
+  // Open chevron arrowhead — much cleaner than filled polygon
+  const Arrow = ({ tx, ty, angle, id }: { tx: number; ty: number; angle: number; id: string }) => (
+    <path
+      d="M-11,-6 L0,0 L-11,6"
+      fill="none"
+      stroke={col(id)}
+      strokeWidth={activeSegment === id || hovered === id ? 1.8 : 1.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      transform={`translate(${tx},${ty}) rotate(${angle})`}
+      style={{ transition: "stroke 160ms, stroke-width 160ms" }}
+    />
   );
+
+  const seg = (id: string, children: ReactNode) => (
+    <g key={id}
+      onMouseEnter={() => setHovered(id)}
+      onMouseLeave={() => setHovered(null)}
+      onClick={() => onSegmentClick?.(id)}
+      style={{ cursor: onSegmentClick ? "pointer" : "default" }}
+    >{children}</g>
+  );
+
+  const tf = (id: string): React.CSSProperties => ({
+    fill: col(id), transition: "fill 160ms",
+    cursor: onSegmentClick ? "pointer" : "default",
+  });
+  const fade = (delay: number): React.CSSProperties => ({
+    opacity: visible ? 1 : 0,
+    transition: `opacity 0.5s ${delay}s ease`,
+  });
+
+  const hw: React.CSSProperties = { fontFamily: "'Caveat', cursive" };
+
   return (
-    <svg viewBox="0 0 640 230" fill="none" className="w-full">
-      <circle cx="110" cy="115" r="50" stroke={cs} strokeWidth="1.5" style={{ transition: "stroke 160ms" }} />
-      <text x="110" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ transition: "fill 160ms" }}>me</text>
-      <circle cx="530" cy="115" r="50" stroke={cs} strokeWidth="1.5" style={{ transition: "stroke 160ms" }} />
-      <text x="530" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ transition: "fill 160ms" }}>others</text>
-      {seg("behave", <>
+    <svg viewBox="0 0 660 240" fill="none" className="w-full">
+      {/* Wobbly circles */}
+      <g style={{ ...fade(0), transition: `opacity 0.5s 0s ease, stroke 160ms` }}>
+        {roughCircles.me.map((p, i) => <path key={i} d={p.d} stroke={p.stroke} strokeWidth={p.strokeWidth} fill="none" />)}
+      </g>
+      <g style={{ ...fade(0.05), transition: `opacity 0.5s 0.05s ease, stroke 160ms` }}>
+        {roughCircles.others.map((p, i) => <path key={i} d={p.d} stroke={p.stroke} strokeWidth={p.strokeWidth} fill="none" />)}
+      </g>
+      <text x="110" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ ...fade(0.08), transition: `opacity 0.5s 0.08s ease, fill 160ms` }}>me</text>
+      <text x="530" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ ...fade(0.10), transition: `opacity 0.5s 0.10s ease, fill 160ms` }}>others</text>
+
+      {/* Top arc: how I express */}
+      {seg("behave", <g style={fade(0.15)}>
         <path d="M 155 98 Q 320 52 485 98" {...ps("behave")} />
-        <polygon points="0 0,7 3,0 6" fill={col("behave")} transform="translate(478,95) rotate(-8)" style={{ transition: "fill 160ms" }} />
-        {!hideLabels && <text x="320" y="44" textAnchor="middle" fontSize="11" style={ts("behave")}>how I express / behave</text>}
-      </>)}
-      {seg("others-interpret", <>
-        <path d="M 485 98 Q 572 115 485 132" {...ps("others-interpret")} strokeDasharray="5 3" />
-        {!hideLabels && <text x="570" y="109" textAnchor="start" fontSize="10" style={ts("others-interpret")}>how others</text>}
-        {!hideLabels && <text x="570" y="122" textAnchor="start" fontSize="10" style={ts("others-interpret")}>interpret</text>}
-      </>)}
-      {seg("others-say", <>
+        <Arrow tx={481} ty={97} angle={-6} id="behave" />
+        {!hideLabels && <text x="320" y="36" textAnchor="middle" fontSize="12" style={{ ...tf("behave"), ...hw }}>how I express / behave</text>}
+      </g>)}
+
+      {/* Right loop: others interpret — label clear of circle */}
+      {seg("others-interpret", <g style={fade(0.20)}>
+        <path d="M 485 98 Q 572 115 485 132" {...ps("others-interpret", true)} />
+        {!hideLabels && <text x="594" y="111" textAnchor="start" fontSize="12" style={{ ...tf("others-interpret"), ...hw }}>how others</text>}
+        {!hideLabels && <text x="594" y="126" textAnchor="start" fontSize="12" style={{ ...tf("others-interpret"), ...hw }}>interpret</text>}
+      </g>)}
+
+      {/* Bottom arc: what others say */}
+      {seg("others-say", <g style={fade(0.25)}>
         <path d="M 485 132 Q 320 178 155 132" {...ps("others-say")} />
-        <polygon points="0 0,7 3,0 6" fill={col("others-say")} transform="translate(162,131) rotate(172)" style={{ transition: "fill 160ms" }} />
-        {!hideLabels && <text x="320" y="198" textAnchor="middle" fontSize="11" style={ts("others-say")}>what others do or say</text>}
-      </>)}
-      {seg("i-interpret", <>
-        <path d="M 155 132 Q 68 115 155 98" {...ps("i-interpret")} strokeDasharray="5 3" />
-        {!hideLabels && <text x="60" y="109" textAnchor="end" fontSize="10" style={ts("i-interpret")}>how I</text>}
-        {!hideLabels && <text x="60" y="122" textAnchor="end" fontSize="10" style={ts("i-interpret")}>interpret</text>}
-      </>)}
+        <Arrow tx={159} ty={133} angle={174} id="others-say" />
+        {!hideLabels && <text x="320" y="208" textAnchor="middle" fontSize="12" style={{ ...tf("others-say"), ...hw }}>what others do or say</text>}
+      </g>)}
+
+      {/* Left loop: I interpret — label clear of circle */}
+      {seg("i-interpret", <g style={fade(0.30)}>
+        <path d="M 155 132 Q 68 115 155 98" {...ps("i-interpret", true)} />
+        {!hideLabels && <text x="46" y="111" textAnchor="end" fontSize="12" style={{ ...tf("i-interpret"), ...hw }}>how I</text>}
+        {!hideLabels && <text x="46" y="126" textAnchor="end" fontSize="12" style={{ ...tf("i-interpret"), ...hw }}>interpret</text>}
+      </g>)}
     </svg>
   );
 }
@@ -267,33 +337,49 @@ interface CardModalData { href: string; title: string; meta: string; media: Card
 // Centered iframe modal — SiteNav hides itself when ?embed=1 is in the URL.
 // No extra buttons: just the real article content + a close (×) button.
 function ArticleModal({ card, onClose }: { card: CardModalData; onClose: () => void }) {
+  const [full, setFull] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
   }, [onClose]);
 
+  // Expand to fullscreen when iframe content is scrolled; collapse back at top
+  const handleIframeLoad = () => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    const onScroll = () => setFull(win.scrollY > 30);
+    win.addEventListener("scroll", onScroll, { passive: true });
+  };
+
   const embedUrl = `${card.href}${card.href.includes("?") ? "&" : "?"}embed=1`;
+  const E = "0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
 
   return (
     <>
-      <div className="fixed inset-0 z-[59] bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="fixed z-[60] inset-x-4 inset-y-6 md:inset-x-[8%] md:inset-y-[5%] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-        style={{ animation: "modalIn 0.22s cubic-bezier(0.25,0.46,0.45,0.94)" }}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm text-neutral-500 hover:text-neutral-900 hover:bg-white transition-colors text-lg leading-none"
-          aria-label="Close"
-        >
+      {!full && <div className="fixed inset-0 z-[59] bg-black/50 backdrop-blur-sm" onClick={onClose} />}
+      <div style={{
+        position: "fixed", zIndex: 60,
+        top:    full ? 0 : "clamp(24px, 5vh, 48px)",
+        right:  full ? 0 : "clamp(16px, 8vw, 120px)",
+        bottom: full ? 0 : "clamp(24px, 5vh, 48px)",
+        left:   full ? 0 : "clamp(16px, 8vw, 120px)",
+        borderRadius: full ? 0 : 16,
+        background: "white", overflow: "hidden",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.18)",
+        display: "flex", flexDirection: "column",
+        transition: `top ${E}, right ${E}, bottom ${E}, left ${E}, border-radius ${E}`,
+        animation: full ? "none" : "modalIn 0.22s cubic-bezier(0.25,0.46,0.45,0.94)",
+      }}>
+        <button onClick={onClose} aria-label="Close"
+          className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm text-neutral-500 hover:text-neutral-900 hover:bg-white transition-colors text-lg leading-none">
           ×
         </button>
-        <iframe src={embedUrl} className="flex-1 w-full border-0" title={card.title} />
+        <iframe ref={iframeRef} src={embedUrl} onLoad={handleIframeLoad}
+          className="flex-1 w-full border-0" title={card.title} />
       </div>
       <style dangerouslySetInnerHTML={{ __html: "@keyframes modalIn{from{opacity:0;transform:scale(0.97) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}" }} />
     </>
@@ -649,7 +735,7 @@ function Index() {
           <div style={{ width: LEFT_W, flexShrink: 0 }} />
 
           {/* Right panel */}
-          <div className="flex-1 min-w-0 bg-neutral-950" style={{ opacity: settled ? 1 : 0, pointerEvents: settled ? "auto" : "none", transition: "opacity 0.4s ease" }}>
+          <div className="flex-1 min-w-0 bg-stone-900" style={{ opacity: settled ? 1 : 0, pointerEvents: settled ? "auto" : "none", transition: "opacity 0.4s ease" }}>
 
             {/* ── 01 New ways to express ── */}
             <section id="expression" className="px-6 pt-8 pb-12 scroll-mt-24">
