@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import { CardIcon } from "./-CardIcon";
 import { ARTICLE_META } from "./-articleMeta";
-import { NAV_ITEMS, navHref } from "./-navItems"; // kept — TopNav below references these as fallback
+import { NAV_ITEMS, navHref } from "./-navItems";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/")({
 type DearMode = "recruiter" | "dating" | "future-self";
 type CardMedia =
   | { type: "video"; src: string; transform?: string; startTime?: number }
-  | { type: "image"; src: string; fit?: "cover" | "contain" }
+  | { type: "image"; src: string; thumbnailSize?: "xs" | "small" | "medium" }
   | { type: "concept"; icon?: string; label?: string; gradient?: string };
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick }: {
     <g onMouseEnter={() => setHovered(id)} onMouseLeave={() => setHovered(null)} onClick={() => onSegmentClick?.(id)}>{children}</g>
   );
   return (
-    <svg viewBox="0 0 640 230" fill="none" className="w-full" style={{ overflow: "visible", minWidth: 0, maxWidth: "100%" }}>
+    <svg viewBox="0 0 640 230" fill="none" className="w-full">
       <circle cx="110" cy="115" r="50" stroke={cs} strokeWidth="1.5" style={{ transition: "stroke 160ms" }} />
       <text x="110" y="119" textAnchor="middle" fontSize="13" fontWeight="500" fill={ct} style={{ transition: "fill 160ms" }}>me</text>
       <circle cx="530" cy="115" r="50" stroke={cs} strokeWidth="1.5" style={{ transition: "stroke 160ms" }} />
@@ -233,8 +233,8 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick }: {
       </>)}
       {seg("others-interpret", <>
         <path d="M 485 98 Q 572 115 485 132" {...ps("others-interpret")} strokeDasharray="5 3" />
-        <text x="584" y="109" textAnchor="start" fontSize="10" style={ts("others-interpret")}>how others</text>
-        <text x="584" y="122" textAnchor="start" fontSize="10" style={ts("others-interpret")}>interpret</text>
+        <text x="570" y="109" textAnchor="start" fontSize="10" style={ts("others-interpret")}>how others</text>
+        <text x="570" y="122" textAnchor="start" fontSize="10" style={ts("others-interpret")}>interpret</text>
       </>)}
       {seg("others-say", <>
         <path d="M 485 132 Q 320 178 155 132" {...ps("others-say")} />
@@ -243,8 +243,8 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick }: {
       </>)}
       {seg("i-interpret", <>
         <path d="M 155 132 Q 68 115 155 98" {...ps("i-interpret")} strokeDasharray="5 3" />
-        <text x="48" y="109" textAnchor="end" fontSize="10" style={ts("i-interpret")}>how I</text>
-        <text x="48" y="122" textAnchor="end" fontSize="10" style={ts("i-interpret")}>interpret</text>
+        <text x="60" y="109" textAnchor="end" fontSize="10" style={ts("i-interpret")}>how I</text>
+        <text x="60" y="122" textAnchor="end" fontSize="10" style={ts("i-interpret")}>interpret</text>
       </>)}
     </svg>
   );
@@ -277,7 +277,12 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
       {badge && <span className="absolute top-5 right-5 z-10 rounded-full bg-neutral-900/80 px-2.5 py-1 text-[10px] uppercase tracking-wide text-white backdrop-blur-sm">{badge}</span>}
       <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-white">
         {media.type === "video" && <video src={`${media.src}#t=0.001`} preload="metadata" muted loop playsInline className="h-full w-full object-cover" style={media.transform ? { transform: media.transform } : undefined} />}
-        {media.type === "image" && <img src={media.src} alt={title} className={media.fit === "contain" ? "object-contain" : "h-full w-full object-cover"} style={media.fit === "contain" ? { width: "40%", height: "auto" } : undefined} />}
+        {media.type === "image" && <img src={media.src} alt={title} className={
+          media.thumbnailSize === "xs"     ? "w-8 h-8 object-contain" :
+          media.thumbnailSize === "small"  ? "w-16 h-16 object-contain" :
+          media.thumbnailSize === "medium" ? "w-32 h-32 object-contain" :
+          "h-full w-full object-cover"
+        } />}
         {media.type === "concept" && (
           <div className="h-full w-full flex flex-col items-center justify-center gap-3 px-8 py-6" style={{ background: media.gradient ?? "linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%)" }}>
             {media.icon && <span style={{ fontSize: 52 }}>{media.icon}</span>}
@@ -299,11 +304,14 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
 // ── Sub-group divider ─────────────────────────────────────────────────────
 
 function TopNav() {
-
   return (
     <header className="sticky top-0 z-50 flex items-center px-8 bg-white/95 backdrop-blur-sm border-b border-neutral-100" style={{ height: NAV_HEIGHT }}>
       <Link to="/" className="text-[15px] font-semibold tracking-tight text-neutral-900 mr-auto">Qiyu</Link>
-      <nav className="flex items-center gap-8">{NAV_ITEMS.map((l) => (<Link key={l} to={navHref(l)} className={["text-sm transition-colors", l === "work" ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>{l}</Link>))}</nav>
+      <nav className="flex items-center gap-8">
+        {NAV_ITEMS.map((l) => (
+          <Link key={l} to={navHref(l)} className={["text-sm transition-colors", l === "work" ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>{l}</Link>
+        ))}
+      </nav>
     </header>
   );
 }
@@ -453,8 +461,8 @@ function Index() {
         {/* pointerEvents: none so right panel receives clicks normally.
             Only diagramInnerRef (which sits in the left panel in split mode)
             has pointerEvents: auto — it's the only interactive element here. */}
-        <div ref={contentWrapperRef} style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 600, pointerEvents: "auto", overflow: "hidden" }}>
+        <div ref={contentWrapperRef} style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", overflow: "hidden" }}>
+          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 600, pointerEvents: "auto", overflow: "hidden", clipPath: "inset(0 -20px)" }}>
 
             {/* Hero header */}
             <div ref={heroTextRef} style={{ textAlign: "center", marginBottom: "2.5rem", width: "100%" }}>
@@ -511,7 +519,7 @@ function Index() {
                 <Card title="Hand gesture interactions" meta="Vibe-coding · Embodied" href="/play" {...ch} media={{ type: "video", src: "/articles/hand-gesture.mp4" }} />
                 <Card title="Voice interaction" meta="Vibe-coding · Voice" href="/play" {...ch} media={{ type: "video", src: "/articles/voice.mp4" }} />
                 <Card title="Palo Alto moment" meta="Vibe-coding · Place & context" href="/play" {...ch} media={{ type: "video", src: "/articles/palo-alto.mp4" }} />
-                <Card title="Reimagining the chatbot" meta="Prototype · Collection" href="/reimagining-the-chatbot" slug="reimagining-the-chatbot" {...ch} media={{ type: "image", src: "/articles/chatbot-thumb.png" }} />
+                <Card title="Reimagining the chatbot" meta="Prototype · Collection" href="/reimagining-the-chatbot" slug="reimagining-the-chatbot" {...ch} media={{ type: "image", src: "/articles/chatbot-thumb.png", thumbnailSize: "medium" }} />
               </div>
             </section>
 
@@ -529,10 +537,10 @@ function Index() {
                 <Card title="Thinking frameworks" meta="Models · /reflect" href="/think" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#fafafa 0%,#efefef 100%)", label: "Mental models for understanding how people think — analysis-synthesis, 2×2 quadrant, double diamond." }} />
 
                 <GroupLabel label="others = AI" />
-                <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png" }} />
-                <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.svg", fit: "contain" }} />
-                <Card title="Personalization" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.svg", fit: "contain" }} />
-                <Card title="Designing Next-Gen AI Products" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
+                <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png", thumbnailSize: "medium" }} />
+                <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.svg", thumbnailSize: "small" }} />
+                <Card title="Personalization" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.svg", thumbnailSize: "xs" }} />
+                <Card title="Designing Next-Gen AI Products" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
               </div>
             </section>
 
@@ -549,9 +557,9 @@ function Index() {
                 <Card title="Voices that shaped how I think" meta="Interactive graph · /listen" href="/listen" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
 
                 <GroupLabel label="others = AI" />
-                <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", fit: "contain" }} />
+                <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", thumbnailSize: "small" }} />
                 <Card title="Google Cloud — Conversational AI" meta="Prototype · 0→1" href="/google-cloud" slug="google-cloud" {...ch} media={{ type: "image", src: "/articles/google-cloud-thumb.png" }} />
-                <Card title="Conversations that earn trust" meta="Research · Conversation design" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
+                <Card title="Conversations that earn trust" meta="Research · Conversation design" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
               </div>
             </section>
 
