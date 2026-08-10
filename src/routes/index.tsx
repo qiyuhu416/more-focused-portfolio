@@ -374,7 +374,8 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
       <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-white">
         {media.type === "video" && <video src={`${media.src}#t=0.001`} preload="metadata" muted loop playsInline className="h-full w-full object-cover" style={media.transform ? { transform: media.transform } : undefined} />}
         {media.type === "image" && <img src={media.src} alt={title} className={
-"h-full w-full object-cover"
+          media.thumbnailSize === "small" ? "w-20 h-20 object-contain" :
+          "h-full w-full object-contain"
         } />}
         {media.type === "concept" && (
           <div className="h-full w-full flex flex-col items-center justify-center gap-3 px-8 py-6" style={{ background: media.gradient ?? "linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%)" }}>
@@ -448,7 +449,6 @@ function Index() {
   const [activeSection, setActiveSection]     = useState<string | null>(null);
   const [othersType, setOthersType]           = useState<"human" | "AI" | null>(null);
   const [atFooter, setAtFooter]               = useState(false);
-  const [questionVisible, setQuestionVisible] = useState(true);
   const [navVisible, setNavVisible]           = useState(true);
   const [cursorPos, setCursorPos]             = useState({ x: 0, y: 0 });
   const [hoveredSlug, setHoveredSlug]         = useState<string | null>(null);
@@ -472,26 +472,8 @@ function Index() {
     onCardClick: handleCardClick,
   };
 
-  // CSS keyframe for question title entrance
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = `
-      @keyframes qFadeIn {
-        from { opacity: 0; transform: translateY(5px); }
-        to   { opacity: 1; transform: translateY(0); }
-      }
-      .q-title { animation: qFadeIn 0.35s ease forwards; }
-    `;
-    document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
-  }, []);
 
-  // Brief opacity dip when section or othersType changes
-  useEffect(() => {
-    setQuestionVisible(false);
-    const t = setTimeout(() => setQuestionVisible(true), 160);
-    return () => clearTimeout(t);
-  }, [activeSection, othersType]);
+
 
   // Scroll animation loop — imperative DOM writes, no React re-renders
   useEffect(() => {
@@ -638,12 +620,21 @@ function Index() {
               <p style={{ fontSize: 15, color: "#737373", lineHeight: 1.65 }}>Qiyu is exploring technology that brings people closer.</p>
             </div>
 
-            {/* Question title + optional others=AI label */}
-            {settled && activeSection && (
-              <div key={`${activeSection}-${othersType}`} className="q-title" style={{ width: "100%", marginBottom: "1.5rem", textAlign: "left" }}>
-                <h2 style={{ fontSize: 30, fontWeight: 600, color: "#171717", lineHeight: 1.2, letterSpacing: "-0.01em", opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
-                  {(othersType === "AI" && SECTION_AI_QUESTIONS[activeSection]) || SECTION_QUESTIONS[activeSection]}
-                </h2>
+            {/* Question titles — all 4 stacked, crossfade via CSS. No re-mounts, no layout shift. */}
+            {settled && (
+              <div style={{ position: "relative", minHeight: "5.5rem", width: "100%", marginBottom: "1.5rem" }}>
+                {SECTION_TABS.map(({ id }) => (
+                  <div key={id} style={{
+                    position: "absolute", top: 0, left: 0, right: 0,
+                    opacity: activeSection === id ? 1 : 0,
+                    transition: "opacity 0.28s ease",
+                    pointerEvents: activeSection === id ? "auto" : "none",
+                  }}>
+                    <h2 style={{ fontSize: 30, fontWeight: 600, color: "#171717", lineHeight: 1.2, letterSpacing: "-0.01em" }}>
+                      {(id === activeSection && othersType === "AI" && SECTION_AI_QUESTIONS[id]) || SECTION_QUESTIONS[id]}
+                    </h2>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -663,12 +654,21 @@ function Index() {
               )}
             </div>
 
-            {/* Section description — close to diagram */}
-            {settled && activeSection && (
-              <div key={`desc-${activeSection}`} style={{ marginTop: "1rem", width: "100%", textAlign: "left", opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
-                <p style={{ fontSize: 13, color: "#737373", lineHeight: 1.65 }}>
-                  {SECTION_DESCRIPTIONS[activeSection]}
-                </p>
+            {/* Descriptions — all 4 stacked, crossfade via CSS. */}
+            {settled && (
+              <div style={{ position: "relative", minHeight: "3.5rem", width: "100%", marginTop: "1rem" }}>
+                {SECTION_TABS.map(({ id }) => (
+                  <div key={id} style={{
+                    position: "absolute", top: 0, left: 0, right: 0,
+                    opacity: activeSection === id ? 1 : 0,
+                    transition: "opacity 0.28s ease 0.06s",
+                    pointerEvents: activeSection === id ? "auto" : "none",
+                  }}>
+                    <p style={{ fontSize: 13, color: "#737373", lineHeight: 1.65 }}>
+                      {SECTION_DESCRIPTIONS[id]}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -719,9 +719,9 @@ function Index() {
                 <div id="sentinel-others-think-ai" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="Others = AI" />
                 <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png" }} />
-                <Card title="Design the Human-AI relationships, then interaction" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
-                <Card title="Personalization? What defines a person?" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.svg" }} />
-                <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.svg" }} />
+                <Card title="Design the Human-AI relationships, then interaction" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
+                <Card title="Personalization? What defines a person?" meta="Research · What makes a person" href="/personalization" slug="personalization" {...ch} media={{ type: "image", src: "/articles/personalization-thumb.svg", thumbnailSize: "small" }} />
+                <Card title="Proactive" meta="Prototype · Anticipation" href="/proactive" slug="proactive" {...ch} media={{ type: "image", src: "/articles/proactive-thumb.svg", thumbnailSize: "small" }} />
               </div>
             </section>
 
@@ -737,10 +737,10 @@ function Index() {
 
                 <div id="sentinel-others-say-ai" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="Others = AI" />
-                <Card title="Conversations that earn trust" meta="Research · Conversation design" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png" }} />
-                <Card title="What do prototypes prototype?" meta="Article · Method" href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...ch} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg" }} />
+                <Card title="Conversations that earn trust" meta="Research · Conversation design" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
+                <Card title="What do prototypes prototype?" meta="Article · Method" href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...ch} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg", thumbnailSize: "small" }} />
                 <Card title="Google Cloud — Conversational AI" meta="Prototype · 0→1" href="/google-cloud" slug="google-cloud" {...ch} media={{ type: "image", src: "/articles/google-cloud-thumb.png" }} />
-                <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg" }} />
+                <Card title="A2UI — Generative UI" meta="Prototype · AI response as interface" href="/a2ui-generative" slug="a2ui-generative" {...ch} media={{ type: "image", src: "/articles/a2ui-thumb.svg", thumbnailSize: "small" }} />
               </div>
             </section>
 
@@ -749,7 +749,7 @@ function Index() {
             {/* ── 04 I interpret ── */}
             <section id="i-interpret" className="px-6 pt-8 pb-12 scroll-mt-24">
               <div className="grid grid-cols-2 gap-5">
-                <Card title="How Claude is shaping how I think" meta="Research · Tools" href="/claude-code-research" slug="claude-code-research" {...ch} media={{ type: "image", src: "/articles/claude-code-thumb.png" }} />
+                <Card title="How Claude is shaping how I think" meta="Research · Tools" href="/claude-code-research" slug="claude-code-research" {...ch} media={{ type: "image", src: "/articles/claude-code-thumb.png", thumbnailSize: "small" }} />
                 <Card title="AIOS — seeing your own blindspots" meta="Prototype · Self-reflection" badge="in progress" {...ch} media={{ type: "concept", icon: "◎", label: "A personal OS for mapping what I know, don't know, and don't know I don't know.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
                 <Card title="AI-supported journaling" meta="Concept · Self-understanding" badge="coming soon" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f5f5f0 0%,#e8e8e0 100%)", label: "Using AI to surface patterns in how I interpret the world and what I actually want." }} />
               </div>
