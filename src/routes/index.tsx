@@ -3,7 +3,6 @@ import { useState, useRef, useEffect, useCallback, type ReactNode } from "react"
 import { CardIcon } from "./-CardIcon";
 import { ARTICLE_META } from "./-articleMeta";
 import { NAV_ITEMS, navHref } from "./-navItems";
-import { SiteNav } from "./-SiteNav";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -74,13 +73,13 @@ const SECTION_QUESTIONS: Record<string, string> = {
   "expression":   "Is there a richer way to express yourself?",
   "others-think": "How do you understand what others are thinking?",
   "others-say":   "What does it sound like when others respond?",
-  "i-interpret":  "Do you know what you actually want?",
+  "i-interpret":  "Do I actually know how I think?",
 };
 
 // AI-specific overrides for sections with "others = AI" sub-groups
 const SECTION_AI_QUESTIONS: Partial<Record<string, string>> = {
   "others-think": "How can AI better understand humans?",
-  "others-say":   "How should AI speak so humans feel heard?",
+  "others-say":   "How should AI act so humans feel seen?",
 };
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
@@ -156,7 +155,7 @@ function DearFooter() {
   const content = letters[mode];
 
   return (
-    <div className="flex h-full items-center" style={{ paddingLeft: LEFT_W }}>
+    <div className="flex h-full items-center justify-center px-16">
       <div className="absolute top-6 inset-x-0 flex justify-center pointer-events-none">
         <svg width="16" height="20" viewBox="0 0 16 20" fill="none" style={{ opacity: 0.18 }}>
           <path d="M8 18V2M8 2L2 8M8 2l6 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -203,10 +202,11 @@ function DearFooter() {
 
 // ── Two circles diagram ────────────────────────────────────────────────────
 
-function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI }: {
+function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI, hideLabels }: {
   activeSegment?: string | null;
   onSegmentClick?: (id: string) => void;
   othersIsAI?: boolean;
+  hideLabels?: boolean;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const col = (id: string) => {
@@ -241,22 +241,22 @@ function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI }: {
       {seg("behave", <>
         <path d="M 155 98 Q 320 52 485 98" {...ps("behave")} />
         <polygon points="0 0,7 3,0 6" fill={col("behave")} transform="translate(478,95) rotate(-8)" style={{ transition: "fill 160ms" }} />
-        <text x="320" y="44" textAnchor="middle" fontSize="11" style={ts("behave")}>how I express / behave</text>
+        {!hideLabels && <text x="320" y="44" textAnchor="middle" fontSize="11" style={ts("behave")}>how I express / behave</text>}
       </>)}
       {seg("others-interpret", <>
         <path d="M 485 98 Q 572 115 485 132" {...ps("others-interpret")} strokeDasharray="5 3" />
-        <text x="570" y="109" textAnchor="start" fontSize="10" style={ts("others-interpret")}>how others</text>
-        <text x="570" y="122" textAnchor="start" fontSize="10" style={ts("others-interpret")}>interpret</text>
+        {!hideLabels && <text x="570" y="109" textAnchor="start" fontSize="10" style={ts("others-interpret")}>how others</text>}
+        {!hideLabels && <text x="570" y="122" textAnchor="start" fontSize="10" style={ts("others-interpret")}>interpret</text>}
       </>)}
       {seg("others-say", <>
         <path d="M 485 132 Q 320 178 155 132" {...ps("others-say")} />
         <polygon points="0 0,7 3,0 6" fill={col("others-say")} transform="translate(162,131) rotate(172)" style={{ transition: "fill 160ms" }} />
-        <text x="320" y="198" textAnchor="middle" fontSize="11" style={ts("others-say")}>what others do or say</text>
+        {!hideLabels && <text x="320" y="198" textAnchor="middle" fontSize="11" style={ts("others-say")}>what others do or say</text>}
       </>)}
       {seg("i-interpret", <>
         <path d="M 155 132 Q 68 115 155 98" {...ps("i-interpret")} strokeDasharray="5 3" />
-        <text x="60" y="109" textAnchor="end" fontSize="10" style={ts("i-interpret")}>how I</text>
-        <text x="60" y="122" textAnchor="end" fontSize="10" style={ts("i-interpret")}>interpret</text>
+        {!hideLabels && <text x="60" y="109" textAnchor="end" fontSize="10" style={ts("i-interpret")}>how I</text>}
+        {!hideLabels && <text x="60" y="122" textAnchor="end" fontSize="10" style={ts("i-interpret")}>interpret</text>}
       </>)}
     </svg>
   );
@@ -315,18 +315,16 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
 
 // ── Sub-group divider ─────────────────────────────────────────────────────
 
-function TopNav({ visible }: { visible: boolean }) {
-  void NAV_ITEMS; void navHref;
+function TopNav() {
   return (
-    <SiteNav
-      active="work"
-      headerProps={{
-        style: {
-          transform: visible ? "translateY(0)" : `translateY(-${NAV_HEIGHT}px)`,
-          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        },
-      }}
-    />
+    <header className="sticky top-0 z-50 flex items-center px-8 bg-white/95 backdrop-blur-sm border-b border-neutral-100" style={{ height: NAV_HEIGHT }}>
+      <Link to="/" className="text-[15px] font-semibold tracking-tight text-neutral-900 mr-auto">Qiyu</Link>
+      <nav className="flex items-center gap-8">
+        {NAV_ITEMS.map((l) => (
+          <Link key={l} to={navHref(l)} className={["text-sm transition-colors", l === "work" ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>{l}</Link>
+        ))}
+      </nav>
+    </header>
   );
 }
 
@@ -350,6 +348,7 @@ function Index() {
   const heroHintRef        = useRef<HTMLDivElement>(null);
   const footerSpacerRef     = useRef<HTMLDivElement>(null);
   const settledRef          = useRef(false);
+  const atFooterRef         = useRef(false);
   const activeSectionRef    = useRef<string | null>(null);
   const othersTypeRef       = useRef<"human" | "AI" | null>(null);
 
@@ -404,8 +403,9 @@ function Index() {
         diagramInnerRef.current.style.maxWidth  = `${w}px`;
         diagramInnerRef.current.style.transform = `translateX(calc(${-31 * p}vw))`;
       }
-      if (bgRef.current)    bgRef.current.style.opacity    = String(p);
-      if (bgTopRef.current) bgTopRef.current.style.opacity = String(p);
+      const panelOpacity = atFooterRef.current ? 0 : p;
+      if (bgRef.current)    bgRef.current.style.opacity    = String(panelOpacity);
+      if (bgTopRef.current) bgTopRef.current.style.opacity = String(panelOpacity);
       const ho = Math.max(0, 1 - p / 0.4);
       if (heroTextRef.current) {
         heroTextRef.current.style.opacity      = String(ho);
@@ -479,7 +479,10 @@ function Index() {
   useEffect(() => {
     const el = footerSpacerRef.current; if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => setAtFooter(entry.isIntersecting),
+      ([entry]) => {
+        atFooterRef.current = entry.isIntersecting;
+        setAtFooter(entry.isIntersecting);
+      },
       { threshold: 0.05 }
     );
     obs.observe(el);
@@ -515,14 +518,17 @@ function Index() {
       {/* Dear footer */}
       <div className="fixed inset-0 z-0 bg-neutral-950"><DearFooter /></div>
 
+      {/* Left panel top fill — covers the 0→NAV_HEIGHT gap above the fixed overlay */}
+      <div ref={bgTopRef} style={{ position: "fixed", top: 0, left: 0, height: NAV_HEIGHT, width: LEFT_W, background: "#fafafa", borderRight: "1px solid #f0f0f0", zIndex: 29, opacity: 0, pointerEvents: "none" }} />
+
       {/* Single diagram overlay — scroll loop animates this */}
-      <div style={{ position: "fixed", top: NAV_HEIGHT, left: 0, right: 0, bottom: 0, zIndex: 30, pointerEvents: "none", overflow: "hidden" }}>
+      <div style={{ position: "fixed", top: NAV_HEIGHT, left: 0, right: 0, bottom: 0, zIndex: 30, pointerEvents: "none", overflow: "hidden", opacity: atFooter ? 0 : 1, transition: "opacity 0.5s ease" }}>
         <div ref={bgRef} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: LEFT_W, background: "#fafafa", borderRight: "1px solid #f0f0f0", opacity: 0 }} />
         {/* pointerEvents: none so right panel receives clicks normally.
             Only diagramInnerRef (which sits in the left panel in split mode)
             has pointerEvents: auto — it's the only interactive element here. */}
         <div ref={contentWrapperRef} style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", overflow: "hidden" }}>
-          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 600, pointerEvents: "auto", overflow: "hidden", clipPath: "inset(0 -20px)" }}>
+          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", height: "100%", maxWidth: 600, pointerEvents: "auto", overflow: "hidden", clipPath: "inset(0 -20px)" }}>
 
             {/* Hero header */}
             <div ref={heroTextRef} style={{ textAlign: "center", marginBottom: "2.5rem", width: "100%" }}>
@@ -533,40 +539,41 @@ function Index() {
             {/* Question title + optional others=AI label */}
             {settled && activeSection && (
               <div key={`${activeSection}-${othersType}`} className="q-title" style={{ width: "100%", marginBottom: "1.5rem", textAlign: "left" }}>
-                {othersType === "AI" && (
-                  <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#a3a3a3", marginBottom: 6 }}>
-                    others = AI 🤖
-                  </p>
-                )}
                 <h2 style={{ fontSize: 30, fontWeight: 600, color: "#171717", lineHeight: 1.2, letterSpacing: "-0.01em", opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
                   {(othersType === "AI" && SECTION_AI_QUESTIONS[activeSection]) || SECTION_QUESTIONS[activeSection]}
                 </h2>
               </div>
             )}
 
-            {/* THE single diagram */}
-            <TwoCirclesDiagram activeSegment={settled ? activeSegment : null} onSegmentClick={handleSegmentClick} othersIsAI={othersType === "AI"} />
+            {/* Larger gap between title and diagram */}
+            {settled && <div style={{ flex: 1.4 }} />}
 
-            {/* Hero hint */}
-            <div ref={heroHintRef} style={{ marginTop: "1.5rem", textAlign: "center" }}>
-              <svg width="14" height="18" viewBox="0 0 14 18" fill="none" style={{ opacity: 0.35, margin: "0 auto" }}><path d="M7 1v16M7 17l-5-5M7 17l5-5" stroke="#a3a3a3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
+            {/* THE single diagram — labels hidden in split view */}
+            <TwoCirclesDiagram activeSegment={settled ? activeSegment : null} onSegmentClick={handleSegmentClick} othersIsAI={othersType === "AI"} hideLabels={settled} />
 
-            {/* Pain point description — appears in split mode, per section */}
+            {/* Section description — close to diagram */}
             {settled && activeSection && (
-              <div key={`desc-${activeSection}`} style={{ marginTop: "1.5rem", width: "100%", textAlign: "center", opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
+              <div key={`desc-${activeSection}`} style={{ marginTop: "1rem", width: "100%", textAlign: "left", opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
                 <p style={{ fontSize: 13, color: "#737373", lineHeight: 1.65 }}>
                   {SECTION_DESCRIPTIONS[activeSection]}
                 </p>
               </div>
             )}
+
+            {/* Hero hint (visible in hero mode only) */}
+            <div ref={heroHintRef} style={{ marginTop: "1.5rem", textAlign: "center" }}>
+              <svg width="14" height="18" viewBox="0 0 14 18" fill="none" style={{ opacity: 0.35, margin: "0 auto" }}><path d="M7 1v16M7 17l-5-5M7 17l5-5" stroke="#a3a3a3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+
+            {/* Bottom spacer */}
+            {settled && <div style={{ flex: 0.5 }} />}
           </div>
         </div>
       </div>
 
       {/* Main white content */}
       <div className="relative z-10 bg-background" style={{ boxShadow: "0 0 80px 20px rgba(0,0,0,0.18)" }}>
-        <TopNav visible={navVisible} />
+        <TopNav />
         <div style={{ height: `calc(100vh - ${NAV_HEIGHT}px)`, background: "#fafafa" }} />
 
         <div className="flex">
@@ -624,7 +631,6 @@ function Index() {
                 <GroupLabel label="others = human" />
                 <Card title="Hello Humans" meta="Non-software · Analog" href="/hello-humans" {...ch} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
                 <Card title="Voices that shaped how I think" meta="Interactive graph · /listen" href="/listen" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
-                <Card title="Human-AI relationship research" meta="Research · Collaboration" href="/human-ai-research" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f0f4f8 0%,#dde6f0 100%)", label: "Exploring the evolving nature of human-AI collaboration and what it means for how we relate." }} />
 
                 <div id="sentinel-others-say-ai" className="col-span-2" style={{ height: 0 }} />
                 <GroupLabel label="others = AI" />
