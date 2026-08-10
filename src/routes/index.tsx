@@ -76,6 +76,13 @@ const SECTION_QUESTIONS: Record<string, string> = {
   "i-interpret":  "Do you know what you actually want?",
 };
 
+const SECTION_DESCRIPTIONS: Record<string, string> = {
+  "expression":   "Current interfaces reduce all intent to text boxes. But presence, nuance, and emotion are much richer than that.",
+  "others-think": "We design based on assumptions about how others think — whether that someone is human or AI. Those assumptions are often wrong.",
+  "others-say":   "What gets said back shapes how understood we feel. Whether it's a conversation with a stranger or an AI response, design decides what gets heard.",
+  "i-interpret":  "The way I process what arrives is filtered by what I already believe. Making that filter visible is the first step.",
+};
+
 // ── Easing ────────────────────────────────────────────────────────────────
 
 function ease(t: number): number {
@@ -115,26 +122,32 @@ function MusicPlayer() {
 
 // ── Dear footer ───────────────────────────────────────────────────────────
 
+const DEAR_LABEL: Record<DearMode, string> = {
+  recruiter:    "recruiter",
+  dating:       "you",
+  "future-self":"future me",
+};
+
 function DearFooter() {
-  const [mode, setMode] = useState<DearMode>("recruiter");
-  const letters: Record<DearMode, { label: string; salutation: string; body: ReactNode; cta?: ReactNode }> = {
+  const [mode, setMode]   = useState<DearMode>("recruiter");
+  const [open, setOpen]   = useState(false);
+
+  const letters: Record<DearMode, { body: ReactNode; cta?: ReactNode }> = {
     recruiter: {
-      label: "Recruiter", salutation: "Dear recruiter,",
       body: (<><p>I have an interdisciplinary background — design, engineering, research, a bit of philosophy — and I've stopped apologizing for not fitting neatly into one lane.</p><p>The best way to use me is to hand me a messy, unsolved problem and ask what we should even be building. That's where I come alive.</p><p>I think a lot about innovation — not the word, but the actual practice of it. If your team is figuring out what to build next, rather than just how, I'd love to talk.</p></>),
       cta: <a href="https://www.linkedin.com/in/qiyu-hu/" target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm text-white/70 hover:border-white/60 hover:text-white transition-all">LinkedIn →</a>,
     },
     dating: {
-      label: "Dating someone?", salutation: "Dear you,",
       body: (<><p>I genuinely appreciate the effort you put into tracking me down. Internet research is a skill. That's a good sign.</p><p>Fair warning though: digital me is a portfolio. Real me has strong opinions about menus and a tendency to ask follow-up questions at dinner.</p><p>The most efficient next step is just to meet. Hit the button, pick a time. I'm genuinely better in person.</p></>),
       cta: <a href="https://calendly.com/huqiyu416" target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm text-neutral-900 hover:bg-neutral-100 transition-all">Book a time →</a>,
     },
     "future-self": {
-      label: "Future me", salutation: "Dear future me,",
       body: (<><p>I'm really proud of you.</p><p>Not for the things you built, or the titles, or the places you worked. For staying curious — about yourself, about this world, and about the strange connections between the two.</p><p>You kept asking questions when it would've been easier to just have the answer. Keep going.</p></>),
       cta: <MusicPlayer />,
     },
   };
   const content = letters[mode];
+
   return (
     <div className="flex h-full items-center" style={{ paddingLeft: LEFT_W }}>
       <div className="absolute top-6 inset-x-0 flex justify-center pointer-events-none">
@@ -143,15 +156,36 @@ function DearFooter() {
         </svg>
       </div>
       <div className="w-full max-w-xl px-12">
-        <div className="mb-10 flex flex-wrap gap-2">
-          {(Object.keys(letters) as DearMode[]).map((key) => (
-            <button key={key} onClick={() => setMode(key)}
-              className={["rounded-full px-4 py-1.5 text-sm transition-all", mode === key ? "bg-white text-neutral-900" : "border border-white/15 text-white/50 hover:border-white/40 hover:text-white/80"].join(" ")}>
-              {letters[key].label}
+        {/* Inline salutation with dropdown */}
+        <p className="mb-5 text-sm text-white/35 flex items-center gap-0">
+          Dear&nbsp;
+          <span className="relative">
+            <button
+              onClick={() => setOpen(o => !o)}
+              className="text-white/70 border-b border-white/25 hover:border-white/55 hover:text-white/95 transition-colors"
+            >
+              {DEAR_LABEL[mode]}
+              <span className="ml-1 text-[10px] text-white/30">▾</span>
             </button>
-          ))}
-        </div>
-        <p className="mb-5 text-sm text-white/35">{content.salutation}</p>
+            {open && (
+              <div className="absolute left-0 top-full mt-2 bg-neutral-900 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-20 min-w-[140px]">
+                {(Object.keys(letters) as DearMode[]).map(key => (
+                  <button
+                    key={key}
+                    onClick={() => { setMode(key); setOpen(false); }}
+                    className={["flex w-full text-left px-4 py-2.5 text-sm transition-colors whitespace-nowrap",
+                      key === mode ? "text-white" : "text-white/45 hover:text-white hover:bg-white/5"
+                    ].join(" ")}
+                  >
+                    {DEAR_LABEL[key]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </span>
+          ,
+        </p>
+
         <div className="space-y-4 text-[17px] leading-relaxed text-white/80 [&>p]:m-0">{content.body}</div>
         {content.cta}
         <p className="mt-8 text-sm text-white/30">— Qiyu</p>
@@ -246,7 +280,7 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
         {media.type === "image" && <img src={media.src} alt={title} className={`h-full w-full ${media.fit === "contain" ? "object-contain p-6" : "object-cover"}`} />}
         {media.type === "concept" && (
           <div className="h-full w-full flex flex-col items-center justify-center gap-3 px-8 py-6" style={{ background: media.gradient ?? "linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%)" }}>
-            {media.icon && <span className="text-lg">{media.icon}</span>}
+            {media.icon && <span style={{ fontSize: 52 }}>{media.icon}</span>}
             {media.label && <p className="text-xs text-neutral-500 text-center leading-relaxed">{media.label}</p>}
           </div>
         )}
@@ -289,15 +323,17 @@ function GroupLabel({ label }: { label: string }) {
 // ── Index ─────────────────────────────────────────────────────────────────
 
 function Index() {
-  const bgRef           = useRef<HTMLDivElement>(null);
-  const diagramInnerRef = useRef<HTMLDivElement>(null);
-  const heroTextRef     = useRef<HTMLDivElement>(null);
-  const heroHintRef     = useRef<HTMLDivElement>(null);
-  const splitDescRef    = useRef<HTMLDivElement>(null);
+  const bgRef              = useRef<HTMLDivElement>(null);
+  const contentWrapperRef  = useRef<HTMLDivElement>(null);
+  const diagramInnerRef    = useRef<HTMLDivElement>(null);
+  const heroTextRef        = useRef<HTMLDivElement>(null);
+  const heroHintRef        = useRef<HTMLDivElement>(null);
+  const footerSpacerRef = useRef<HTMLDivElement>(null);
   const settledRef      = useRef(false);
 
   const [settled, setSettled]                 = useState(false);
   const [activeSection, setActiveSection]     = useState<string | null>(null);
+  const [atFooter, setAtFooter]               = useState(false);
   const [questionVisible, setQuestionVisible] = useState(true);
   const [cursorPos, setCursorPos]             = useState({ x: 0, y: 0 });
   const [hoveredSlug, setHoveredSlug]         = useState<string | null>(null);
@@ -346,10 +382,11 @@ function Index() {
       const ho = String(Math.max(0, 1 - p / 0.4));
       if (heroTextRef.current) heroTextRef.current.style.opacity = ho;
       if (heroHintRef.current) heroHintRef.current.style.opacity = ho;
-      if (splitDescRef.current) {
-        const d = Math.max(0, (p - 0.6) / 0.4);
-        splitDescRef.current.style.opacity      = String(d);
-        splitDescRef.current.style.pointerEvents = d > 0.5 ? "auto" : "none";
+      // Shift content wrapper from vertically-centered → top-aligned as we settle
+      if (contentWrapperRef.current) {
+        contentWrapperRef.current.style.alignItems     = p > 0.5 ? "flex-start" : "center";
+        contentWrapperRef.current.style.justifyContent = p > 0.5 ? "flex-start" : "center";
+        contentWrapperRef.current.style.paddingTop     = p > 0.5 ? `${Math.min(4, (p - 0.5) / 0.5 * 4)}rem` : "0";
       }
       const now = raw >= 1;
       if (now !== settledRef.current) { settledRef.current = now; setSettled(now); }
@@ -374,6 +411,16 @@ function Index() {
     return () => obs.forEach(o => o.disconnect());
   }, []);
 
+  useEffect(() => {
+    const el = footerSpacerRef.current; if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setAtFooter(entry.isIntersecting),
+      { threshold: 0.05 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const scrollToSection = useCallback((id: string) => {
     const el = document.getElementById(id); if (!el) return;
     window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - NAV_HEIGHT - 52, behavior: "smooth" });
@@ -385,7 +432,7 @@ function Index() {
     scrollToSection(s);
   }, [scrollToSection]);
 
-  const activeSegment = activeSection ? SECTION_TO_SEGMENT[activeSection] : null;
+  const activeSegment = atFooter ? "behave" : (activeSection ? SECTION_TO_SEGMENT[activeSection] : null);
 
   return (
     <div className="relative">
@@ -406,18 +453,21 @@ function Index() {
       {/* Single diagram overlay — scroll loop animates this */}
       <div style={{ position: "fixed", top: NAV_HEIGHT, left: 0, right: 0, bottom: 0, zIndex: 30, pointerEvents: "none", overflow: "hidden" }}>
         <div ref={bgRef} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: LEFT_W, background: "#fafafa", borderRight: "1px solid #f0f0f0", opacity: 0 }} />
-        <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "auto" }}>
-          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 600 }}>
+        {/* pointerEvents: none so right panel receives clicks normally.
+            Only diagramInnerRef (which sits in the left panel in split mode)
+            has pointerEvents: auto — it's the only interactive element here. */}
+        <div ref={contentWrapperRef} style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 600, pointerEvents: "auto" }}>
 
             {/* Hero header */}
             <div ref={heroTextRef} style={{ textAlign: "center", marginBottom: "2.5rem", width: "100%" }}>
-              <h2 style={{ fontSize: 28, fontWeight: 600, color: "#171717", marginBottom: 12, lineHeight: 1.2 }}>Something always gets lost.</h2>
-              <p style={{ fontSize: 14, color: "#737373", lineHeight: 1.6, maxWidth: 340, margin: "0 auto" }}>I design at the four places it happens.</p>
+              <h2 style={{ fontSize: 32, fontWeight: 600, color: "#171717", marginBottom: 12, lineHeight: 1.15, letterSpacing: "-0.01em" }}>Hello Humans.</h2>
+              <p style={{ fontSize: 15, color: "#737373", lineHeight: 1.65, maxWidth: 380, margin: "0 auto" }}>How can we empower human-human interaction with AI?</p>
             </div>
 
-            {/* Question title — bigger, no sub-label, serves as section heading */}
+            {/* Question title — centered, appears when settled, re-animates on section change */}
             {settled && activeSection && (
-              <div key={activeSection} className="q-title" style={{ width: "100%", marginBottom: "2rem" }}>
+              <div key={activeSection} className="q-title" style={{ width: "100%", marginBottom: "1.5rem", textAlign: "center" }}>
                 <h3 style={{ fontSize: 22, fontWeight: 600, color: "#171717", lineHeight: 1.3, opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
                   {SECTION_QUESTIONS[activeSection]}
                 </h3>
@@ -432,8 +482,14 @@ function Index() {
               <svg width="14" height="18" viewBox="0 0 14 18" fill="none" style={{ opacity: 0.35, margin: "0 auto" }}><path d="M7 1v16M7 17l-5-5M7 17l5-5" stroke="#a3a3a3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
 
-            {/* Split description removed — question title above serves as the only label */}
-            <div ref={splitDescRef} style={{ display: "none" }} />
+            {/* Pain point description — appears in split mode, per section */}
+            {settled && activeSection && (
+              <div key={`desc-${activeSection}`} style={{ marginTop: "1.5rem", width: "100%", textAlign: "center", opacity: questionVisible ? 1 : 0, transition: "opacity 0.16s ease" }}>
+                <p style={{ fontSize: 13, color: "#737373", lineHeight: 1.65 }}>
+                  {SECTION_DESCRIPTIONS[activeSection]}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -448,18 +504,6 @@ function Index() {
 
           {/* Right panel */}
           <div className="flex-1 min-w-0" style={{ opacity: settled ? 1 : 0, pointerEvents: settled ? "auto" : "none", transition: "opacity 0.4s ease" }}>
-
-            {/* Layer 2 nav */}
-            <div className="sticky z-30 bg-white/95 backdrop-blur-sm border-b border-neutral-100 px-6" style={{ top: NAV_HEIGHT }}>
-              <div className="flex items-center gap-6 py-3.5 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
-                                {SECTION_TABS.map(({ id, label }) => (
-                  <button key={id} onClick={() => scrollToSection(id)}
-                    className={["text-sm whitespace-nowrap transition-colors shrink-0", activeSection === id ? "text-neutral-900 font-medium" : "text-neutral-400 hover:text-neutral-900"].join(" ")}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* ── 01 New ways to express ── */}
             <section id="expression" className="px-6 pt-8 pb-12 scroll-mt-24">
@@ -530,7 +574,7 @@ function Index() {
         </div>
       </div>
 
-      <div className="h-screen" />
+      <div ref={footerSpacerRef} className="h-screen" />
     </div>
   );
 }
