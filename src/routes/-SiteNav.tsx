@@ -125,10 +125,10 @@ export function SiteNav({ active, theme = "light", headerProps }: SiteNavProps) 
     <header
       {...headerProps}
       className={[
-        "sticky top-0 z-40 backdrop-blur-sm border-b",
+        "sticky top-0 z-40 backdrop-blur-sm",
         dark
-          ? "bg-neutral-900/90 border-neutral-800/50"
-          : "bg-background/90 border-neutral-200/50",
+          ? "bg-neutral-900/90"
+          : "bg-background/80",
         headerProps?.className ?? "",
       ].join(" ")}
       style={{ height: 52, ...(headerProps?.style ?? {}) }}

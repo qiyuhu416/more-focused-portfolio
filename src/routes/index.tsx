@@ -1,6 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import rough from "roughjs";
 import { CardIcon } from "./-CardIcon";
 import { ARTICLE_META } from "./-articleMeta";
 import { NAV_ITEMS, navHref } from "./-navItems";
@@ -55,6 +54,18 @@ const NAV_HEIGHT  = 52;
 const LEFT_W      = "38%";
 const SCROLL_DIST = 500;
 
+// Section background colors — alternating light and dark palettes
+const SECTION_COLORS_LIGHT = { A: "#faf9f7", B: "#f5f0eb" };  // Cream, Warm sand
+const SECTION_COLORS_DARK  = { A: "#2a2a2a", B: "#1f1f1f" };  // Dark grey, Darker grey
+
+const SECTION_TABS_ORDER = ["expression", "others-think", "others-say", "i-interpret"] as const;
+
+function getSectionColor(sectionId: string, isDarkMode: boolean): string {
+  const colors = isDarkMode ? SECTION_COLORS_DARK : SECTION_COLORS_LIGHT;
+  const index = SECTION_TABS_ORDER.indexOf(sectionId as any);
+  return index % 2 === 0 ? colors.A : colors.B;
+}
+
 const SEGMENT_TO_SECTION: Record<string, string> = {
   "behave":           "expression",
   "others-interpret": "others-think",
@@ -83,6 +94,74 @@ const SECTION_AI_QUESTIONS: Partial<Record<string, string>> = {
   "others-think": "How can AI better understand humans?",
   "others-say":   "How should AI act so humans feel seen?",
 };
+
+// Gallery images shown behind the diagram when each arc is hovered in the landing state
+const SEGMENT_GALLERY: Record<string, Array<{ type: "video" | "image"; src: string }>> = {
+  "behave": [
+    { type: "video", src: "/articles/hand-gesture.mp4" },
+    { type: "video", src: "/articles/voice.mp4" },
+    { type: "video", src: "/articles/palo-alto.mp4" },
+    { type: "image", src: "/articles/chatbot-thumb.png" },
+    { type: "image", src: "/articles/product-launch-thumb.png" },
+  ],
+  "others-interpret": [
+    { type: "image", src: "/articles/design-as-research-tool-thumb.png" },
+    { type: "image", src: "/articles/meet-stranger-calendly.png" },
+    { type: "image", src: "/articles/physical-ai-thumb.png" },
+    { type: "image", src: "/articles/trust-thumb.png" },
+    { type: "image", src: "/articles/personalization-thumb.svg" },
+    { type: "image", src: "/articles/proactive-thumb.svg" },
+  ],
+  "others-say": [
+    { type: "image", src: "/articles/hello-humans-notebook.jpg" },
+    { type: "image", src: "/articles/google-cloud-thumb.png" },
+    { type: "image", src: "/articles/a2ui-thumb.svg" },
+    { type: "image", src: "/articles/prototype-triangle-thumb.svg" },
+    { type: "image", src: "/articles/trust-thumb.png" },
+  ],
+  "i-interpret": [
+    { type: "image", src: "/articles/claude-code-thumb.png" },
+  ],
+};
+
+// Shared positions that orbit the diagram center — used for ALL hover targets.
+// Items at same index share a position, so switching targets crossfades in-place.
+const SCATTER_POS = [
+  { w: 188, x:  7, y: 13, rot: -6 },  // top-left
+  { w: 158, x: 61, y:  6, rot:  5 },  // top-right
+  { w: 168, x: 70, y: 54, rot: -4 },  // right-bottom
+  { w: 130, x:  5, y: 57, rot:  8 },  // left-bottom
+  { w: 116, x: 79, y: 31, rot: -9 },  // right-middle
+  { w: 148, x: 26, y: 74, rot:  3 },  // bottom-center
+] as const;
+
+type ScatterEntry = { src: string; type: "image" | "video"; w: number; x: number; y: number; rot: number };
+
+// Circle-hover scatter
+const CIRCLE_HOVER_SCATTER: Record<"me" | "others", ScatterEntry[]> = {
+  me: [
+    "/articles/claude-code-thumb.png",
+    "/articles/hello-humans-notebook.jpg",
+    "/articles/physical-ai-thumb.png",
+    "/articles/prototype-triangle-thumb.svg",
+    "/articles/personalization-thumb.svg",
+  ].map((src, i) => ({ src, type: "image" as const, ...SCATTER_POS[i] })),
+  others: [
+    "/articles/design-as-research-tool-thumb.png",
+    "/articles/meet-stranger-calendly.png",
+    "/articles/google-cloud-thumb.png",
+    "/articles/trust-thumb.png",
+    "/articles/a2ui-thumb.svg",
+  ].map((src, i) => ({ src, type: "image" as const, ...SCATTER_POS[i] })),
+};
+
+// Arc-hover scatter — built from SEGMENT_GALLERY, same positions
+const SEGMENT_HOVER_SCATTER: Record<string, ScatterEntry[]> = Object.fromEntries(
+  Object.entries(SEGMENT_GALLERY).map(([segId, items]) => [
+    segId,
+    items.slice(0, SCATTER_POS.length).map((item, i) => ({ ...SCATTER_POS[i], src: item.src, type: item.type })),
+  ])
+);
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
   "expression":   "Text boxes flatten everything. A pause, a gesture, a shift in tone — these carry meaning the keyboard can't. I keep wondering what we're leaving out.",
@@ -203,129 +282,129 @@ function DearFooter() {
   );
 }
 
-// ── Two circles diagram — clean minimal SVG ────────────────────────────────
+// Star dots representing people — shown when hovering "others" circle
+const OTHERS_STARS = [
+  { x: 9,  y: 9,  r: 3 },   { x: 22, y: 4,  r: 2.5 }, { x: 38, y: 14, r: 4 },
+  { x: 14, y: 28, r: 2 },   { x: 58, y: 7,  r: 3 },   { x: 72, y: 16, r: 2.5 },
+  { x: 48, y: 30, r: 3.5 }, { x: 5,  y: 48, r: 2 },   { x: 30, y: 52, r: 3 },
+  { x: 80, y: 38, r: 4 },   { x: 65, y: 52, r: 2.5 }, { x: 18, y: 65, r: 3 },
+  { x: 85, y: 60, r: 2 },   { x: 44, y: 68, r: 3.5 }, { x: 10, y: 78, r: 2.5 },
+  { x: 62, y: 74, r: 3 },   { x: 78, y: 80, r: 2 },   { x: 28, y: 82, r: 4 },
+  { x: 50, y: 86, r: 2.5 }, { x: 90, y: 82, r: 3 },   { x: 35, y: 38, r: 2 },
+  { x: 92, y: 24, r: 2.5 }, { x: 74, y: 90, r: 3 },
+];
 
-function TwoCirclesDiagram({ activeSegment, onSegmentClick, othersIsAI: _othersIsAI, hideLabels }: {
+// ── Two circles diagram — between-circles arrows, tight dashed arcs ────────
+// Left circle: cx=185 cy=115 r=48 (left edge x=137)
+// Right circle: cx=525 cy=115 r=48 (right edge x=573)
+// Arrows go BETWEEN circles: (211,72)↔(499,72) and (211,158)↔(499,158)
+// Left arc: M 211 158 C 97 158 97 72 211 72  → peak x≈125 (12px outside circle ✓)
+// Right arc: M 499 72 C 613 72 613 158 499 158 → peak x≈585 (12px outside circle ✓)
+function TwoCirclesDiagram({ activeSegment, onSegmentClick, onSegmentHover, onCircleClick, onCircleHover, othersIsAI: _othersIsAI }: {
   activeSegment?: string | null;
   onSegmentClick?: (id: string) => void;
+  onSegmentHover?: (id: string | null) => void;
+  onCircleClick?: (circle: "me" | "others") => void;
+  onCircleHover?: (circle: "me" | "others" | null) => void;
   othersIsAI?: boolean;
-  hideLabels?: boolean;
 }) {
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 60);
-    return () => clearTimeout(t);
-  }, []);
+  const [hovered, setHovered]             = useState<string | null>(null);
+  const [hoveredCircle, setHoveredCircle] = useState<"me" | "others" | null>(null);
 
   const col = (id: string) => {
-    if (activeSegment === id) return "#171717";
-    if (activeSegment)        return "#d4d4d4";
-    if (hovered === id)       return "#404040";
-    if (hovered)              return "#d4d4d4";
-    return "#a3a3a3";
+    if (activeSegment === id) return "#1a1a1a";
+    if (activeSegment)        return "#d0d0d0";
+    if (hovered === id)       return "#333";
+    if (hovered)              return "#d0d0d0";
+    return "#999";
   };
-  const anyFocus = !!(activeSegment || hovered);
-  const cs = anyFocus ? "#d4d4d4" : "#737373";
-  const ct = anyFocus ? "#c4c4c4" : "#404040";
-
-  // Rough circles — single wobbly stroke, deterministic seed
-  const roughCircles = useMemo(() => {
-    const gen = rough.generator();
-    const mk = (seed: number) => ({
-      seed, roughness: 0.9, bowing: 1,
-      stroke: cs, strokeWidth: 1.2,
-      fill: "none" as const,
-      disableMultiStroke: true,
-    });
-    return {
-      me:     gen.toPaths(gen.circle(110, 115, 100, mk(42))),
-      others: gen.toPaths(gen.circle(530, 115, 100, mk(43))),
-    };
-  }, [cs]);
-
-  const ps = (id: string, dashed?: boolean): React.SVGProps<SVGPathElement> => ({
-    stroke: col(id),
-    strokeWidth: activeSegment === id || hovered === id ? 1.8 : 1.2,
-    fill: "none",
-    strokeDasharray: dashed ? "5 3" : undefined,
-    style: { transition: "stroke 160ms, stroke-width 160ms" },
-  });
-
-  // Open chevron arrowhead — much cleaner than filled polygon
-  const Arrow = ({ tx, ty, angle, id }: { tx: number; ty: number; angle: number; id: string }) => (
-    <path
-      d="M-11,-6 L0,0 L-11,6"
-      fill="none"
-      stroke={col(id)}
-      strokeWidth={activeSegment === id || hovered === id ? 1.8 : 1.4}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      transform={`translate(${tx},${ty}) rotate(${angle})`}
-      style={{ transition: "stroke 160ms, stroke-width 160ms" }}
-    />
-  );
+  const anyFocus     = !!(activeSegment || hovered || hoveredCircle);
+  const circleStroke = anyFocus ? "#c0c0c0" : "#8a8a8a";
+  const meColor      = hoveredCircle === "me"     ? "#1a1a1a" : (anyFocus ? "#bbb" : "#555");
+  const othersColor  = hoveredCircle === "others" ? "#1a1a1a" : (anyFocus ? "#bbb" : "#555");
 
   const seg = (id: string, children: ReactNode) => (
     <g key={id}
-      onMouseEnter={() => setHovered(id)}
-      onMouseLeave={() => setHovered(null)}
+      onMouseEnter={() => { setHovered(id);   onSegmentHover?.(id); }}
+      onMouseLeave={() => { setHovered(null); onSegmentHover?.(null); }}
       onClick={() => onSegmentClick?.(id)}
       style={{ cursor: onSegmentClick ? "pointer" : "default" }}
     >{children}</g>
   );
 
-  const tf = (id: string): React.CSSProperties => ({
-    fill: col(id), transition: "fill 160ms",
-    cursor: onSegmentClick ? "pointer" : "default",
+  const on = (id: string) => hovered === id || activeSegment === id;
+  const sp = (id: string, dashed?: boolean) => ({
+    stroke: col(id), strokeWidth: on(id) ? 1.9 : 1.35,
+    strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+    fill: "none" as const,
+    strokeDasharray: dashed ? "6 4" : undefined,
+    style: { transition: "stroke 150ms, stroke-width 150ms" } as React.CSSProperties,
   });
-  const fade = (delay: number): React.CSSProperties => ({
-    opacity: visible ? 1 : 0,
-    transition: `opacity 0.5s ${delay}s ease`,
-  });
+
+  const Arr = ({ x, y, dir, id }: { x: number; y: number; dir: "l" | "r"; id: string }) => {
+    const d = dir === "r"
+      ? `M ${x-10} ${y-6} L ${x} ${y} L ${x-10} ${y+6}`
+      : `M ${x+10} ${y-6} L ${x} ${y} L ${x+10} ${y+6}`;
+    return <path d={d} fill="none" stroke={col(id)} strokeWidth={on(id)?1.9:1.35} strokeLinecap="round" strokeLinejoin="round" style={{ transition: "stroke 150ms" }} />;
+  };
 
   const hw: React.CSSProperties = { fontFamily: "'Kalam', cursive" };
 
   return (
-    <svg viewBox="0 0 660 240" fill="none" className="w-full">
-      {/* Wobbly circles */}
-      <g style={{ ...fade(0), transition: `opacity 0.5s 0s ease, stroke 160ms` }}>
-        {roughCircles.me.map((p, i) => <path key={i} d={p.d} stroke={p.stroke} strokeWidth={p.strokeWidth} fill="none" />)}
-      </g>
-      <g style={{ ...fade(0.05), transition: `opacity 0.5s 0.05s ease, stroke 160ms` }}>
-        {roughCircles.others.map((p, i) => <path key={i} d={p.d} stroke={p.stroke} strokeWidth={p.strokeWidth} fill="none" />)}
-      </g>
-      <text x="110" y="120" textAnchor="middle" fontSize="14" fill={ct} style={{ ...fade(0.08), ...hw, transition: `opacity 0.5s 0.08s ease, fill 160ms` }}>me</text>
-      <text x="530" y="120" textAnchor="middle" fontSize="14" fill={ct} style={{ ...fade(0.10), ...hw, transition: `opacity 0.5s 0.10s ease, fill 160ms` }}>others</text>
+    <svg viewBox="0 0 710 230" fill="none" className="w-full" overflow="visible">
+      {/* Inner circles */}
+      <circle cx={185} cy={115} r={48}
+        stroke={hoveredCircle === "me" ? "#333" : circleStroke}
+        strokeWidth={hoveredCircle === "me" ? 1.9 : 1.35}
+        fill="none" style={{ transition: "stroke 150ms, stroke-width 150ms", pointerEvents: "none" }} />
+      <circle cx={525} cy={115} r={48}
+        stroke={hoveredCircle === "others" ? "#333" : circleStroke}
+        strokeWidth={hoveredCircle === "others" ? 1.9 : 1.35}
+        fill="none" style={{ transition: "stroke 150ms, stroke-width 150ms", pointerEvents: "none" }} />
+      <text x="185" y="120" textAnchor="middle" fontSize="14" fill={meColor}
+        style={{ ...hw, transition: "fill 150ms", pointerEvents: "none" }}>me</text>
+      <text x="525" y="120" textAnchor="middle" fontSize="14" fill={othersColor}
+        style={{ ...hw, transition: "fill 150ms", pointerEvents: "none" }}>others</text>
 
-      {/* Top arc: how I express */}
-      {seg("behave", <g style={fade(0.15)}>
-        <path d="M 155 98 Q 320 52 485 98" {...ps("behave")} />
-        <Arrow tx={481} ty={97} angle={-6} id="behave" />
-        {!hideLabels && <text x="320" y="36" textAnchor="middle" fontSize="12" style={{ ...tf("behave"), ...hw }}>how I express / behave</text>}
-      </g>)}
+      {/* Transparent circle hit targets */}
+      <circle cx={185} cy={115} r={47} fill="transparent"
+        data-cursor-label="Who is Qiyu →" style={{ cursor: onCircleClick ? "pointer" : "default" }}
+        onMouseEnter={() => { setHoveredCircle("me");     onCircleHover?.("me"); }}
+        onMouseLeave={() => { setHoveredCircle(null);     onCircleHover?.(null); }}
+        onClick={() => onCircleClick?.("me")} />
+      <circle cx={525} cy={115} r={47} fill="transparent"
+        data-cursor-label="People who shaped Qiyu →" style={{ cursor: onCircleClick ? "pointer" : "default" }}
+        onMouseEnter={() => { setHoveredCircle("others"); onCircleHover?.("others"); }}
+        onMouseLeave={() => { setHoveredCircle(null);     onCircleHover?.(null); }}
+        onClick={() => onCircleClick?.("others")} />
 
-      {/* Right loop: others interpret — label clear of circle */}
-      {seg("others-interpret", <g style={fade(0.20)}>
-        <path d="M 485 98 Q 572 115 485 132" {...ps("others-interpret", true)} />
-        {!hideLabels && <text x="594" y="111" textAnchor="start" fontSize="12" style={{ ...tf("others-interpret"), ...hw }}>how others</text>}
-        {!hideLabels && <text x="594" y="126" textAnchor="start" fontSize="12" style={{ ...tf("others-interpret"), ...hw }}>interpret</text>}
-      </g>)}
+      {/* Top arrow — behave: y=53 is 14px ABOVE circle tops (y=67). Zero intersection. */}
+      {seg("behave", <>
+        <line x1="155" y1="53" x2="555" y2="53" {...sp("behave")} />
+        <Arr x={555} y={53} dir="r" id="behave" />
+        <line x1="155" y1="53" x2="555" y2="53" stroke="transparent" strokeWidth={24} />
+      </>)}
 
-      {/* Bottom arc: what others say */}
-      {seg("others-say", <g style={fade(0.25)}>
-        <path d="M 485 132 Q 320 178 155 132" {...ps("others-say")} />
-        <Arrow tx={159} ty={133} angle={174} id="others-say" />
-        {!hideLabels && <text x="320" y="208" textAnchor="middle" fontSize="12" style={{ ...tf("others-say"), ...hw }}>what others do or say</text>}
-      </g>)}
+      {/* Right arc — others-interpret (dashed): Q curve, same gentle radius as the circles */}
+      {seg("others-interpret", <>
+        <path d="M 555 53 Q 660 115 555 177" {...sp("others-interpret", true)} />
+        <Arr x={555} y={177} dir="l" id="others-interpret" />
+        <path d="M 555 53 Q 660 115 555 177" stroke="transparent" strokeWidth={24} fill="none" />
+      </>)}
 
-      {/* Left loop: I interpret — label clear of circle */}
-      {seg("i-interpret", <g style={fade(0.30)}>
-        <path d="M 155 132 Q 68 115 155 98" {...ps("i-interpret", true)} />
-        {!hideLabels && <text x="46" y="111" textAnchor="end" fontSize="12" style={{ ...tf("i-interpret"), ...hw }}>how I</text>}
-        {!hideLabels && <text x="46" y="126" textAnchor="end" fontSize="12" style={{ ...tf("i-interpret"), ...hw }}>interpret</text>}
-      </g>)}
+      {/* Bottom arrow — others-say: y=177 is 14px BELOW circle bottoms (y=163). Zero intersection. */}
+      {seg("others-say", <>
+        <line x1="555" y1="177" x2="155" y2="177" {...sp("others-say")} />
+        <Arr x={155} y={177} dir="l" id="others-say" />
+        <line x1="555" y1="177" x2="155" y2="177" stroke="transparent" strokeWidth={24} />
+      </>)}
+
+      {/* Left arc — i-interpret (dashed): Q curve, same gentle radius as the circles */}
+      {seg("i-interpret", <>
+        <path d="M 155 177 Q 50 115 155 53" {...sp("i-interpret", true)} />
+        <Arr x={155} y={53} dir="r" id="i-interpret" />
+        <path d="M 155 177 Q 50 115 155 53" stroke="transparent" strokeWidth={24} fill="none" />
+      </>)}
     </svg>
   );
 }
@@ -396,7 +475,8 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
   onCardClick?: (card: CardModalData) => void;
 }) {
   const isVideo = media.type === "video";
-  const cls = "group relative rounded-2xl bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] block";
+  const cls = "group relative transition-all hover:-translate-y-1 block";
+  const domain = isExternal && href ? (() => { try { return new URL(href).hostname.replace(/^www\./, ""); } catch { return ""; } })() : "";
   const handlers = {
     onMouseEnter(e: React.MouseEvent<HTMLElement>) {
       const v = e.currentTarget.querySelector("video");
@@ -411,35 +491,36 @@ function Card({ title, meta, href, media, badge, isExternal, slug, onHoverChange
   };
   const inner = (
     <>
-      {badge && <span className="absolute top-5 right-5 z-10 rounded-full bg-neutral-900/80 px-2.5 py-1 text-[10px] uppercase tracking-wide text-white backdrop-blur-sm">{badge}</span>}
-      <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-white">
+      <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl bg-neutral-100 shadow-[0_2px_14px_rgba(0,0,0,0.07)] transition-shadow group-hover:shadow-[0_8px_28px_rgba(0,0,0,0.11)]">
+        {badge && <span className="absolute top-3 right-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] uppercase tracking-wide text-white backdrop-blur-sm">{badge}</span>}
+        {domain && <span className="absolute bottom-3 left-3 z-10 flex items-center gap-1 rounded-full bg-neutral-900 px-3 py-1.5 text-[11px] font-medium text-white">↗ {domain}</span>}
         {media.type === "video" && <video src={`${media.src}#t=0.001`} preload="metadata" muted loop playsInline className="h-full w-full object-cover" style={media.transform ? { transform: media.transform } : undefined} />}
         {media.type === "image" && <img src={media.src} alt={title} className={
           media.thumbnailSize === "small" ? "w-20 h-20 object-contain" :
           "h-full w-full object-contain"
         } />}
         {media.type === "concept" && (
-          <div className="h-full w-full flex flex-col items-center justify-center gap-3 px-8 py-6" style={{ background: media.gradient ?? "linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%)" }}>
+          <div className="h-full w-full flex flex-col items-center justify-center gap-3 px-8 py-6" style={{ background: media.gradient ?? "linear-gradient(135deg,#efefed 0%,#e4e4e2 100%)" }}>
             {media.icon && <span style={{ fontSize: 80 }}>{media.icon}</span>}
-            {media.label && <p className="text-xs text-neutral-500 text-center leading-relaxed">{media.label}</p>}
+            {media.label && <p className="text-xs text-neutral-400 text-center leading-relaxed">{media.label}</p>}
           </div>
         )}
         <CardIcon hasVideo={isVideo} />
       </div>
-      <div className="px-2 pb-2 pt-4">
-        <h3 className="mt-1 text-[15px] font-medium text-neutral-900 leading-snug">{title}</h3>
+      <div className="pt-3 px-0.5">
+        <h3 className="text-[13px] font-medium text-neutral-600 leading-snug tracking-tight">{title}</h3>
       </div>
     </>
   );
   if (!href) return <div className={cls} {...handlers}>{inner}</div>;
   if (onCardClick && !isExternal) {
     return (
-      <button onClick={() => onCardClick({ href, title, meta, media })} className={cls + " text-left w-full"} {...handlers}>
+      <button onClick={() => onCardClick({ href, title, meta, media })} className={cls + " text-left w-full"} data-cursor="card" {...handlers}>
         {inner}
       </button>
     );
   }
-  return <a href={href} target={isExternal ? "_blank" : undefined} rel={isExternal ? "noopener noreferrer" : undefined} className={cls} {...handlers}>{inner}</a>;
+  return <a href={href} target={isExternal ? "_blank" : undefined} rel={isExternal ? "noopener noreferrer" : undefined} className={cls} data-cursor="card" {...handlers}>{inner}</a>;
 }
 
 // ── Sub-group divider ─────────────────────────────────────────────────────
@@ -461,16 +542,126 @@ function TopNav({ visible }: { visible: boolean }) {
 
 function GroupLabel({ label }: { label: string }) {
   return (
-    <div className="col-span-2 flex items-center gap-3 mt-4 mb-1">
-      <span style={{ fontSize: 10, color: "#c4c4c4", letterSpacing: "0.12em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</span>
-      <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.08)" }} />
+    <div className="col-span-3 flex items-center gap-3 mt-4 mb-1">
+      <span style={{ fontSize: 10, color: "#b8b8b8", letterSpacing: "0.12em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.06)" }} />
     </div>
+  );
+}
+
+// ── Collaborator cursor (Figma-style high five) ───────────────────────────
+
+const HAND_EMOJI = "🤙";
+
+function CollaboratorCursor({
+  triggerCount,
+  mousePosRef,
+}: {
+  triggerCount: number;
+  mousePosRef: { current: { x: number; y: number } };
+}) {
+  const wrapRef   = useRef<HTMLDivElement>(null);
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const emojiRef  = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (triggerCount === 0) return;
+
+    const wrap   = wrapRef.current;
+    const cursor = cursorRef.current;
+    const emoji  = emojiRef.current;
+    if (!wrap || !cursor || !emoji) return;
+
+    let x = -90;
+    let y = mousePosRef.current.y || window.innerHeight * 0.42;
+    let rafId = 0;
+    let done = false;
+
+    wrap.style.transition = "none";
+    wrap.style.opacity = "1";
+    wrap.style.transform = `translate(${x}px, ${y}px)`;
+    cursor.style.display = "block";
+    emoji.style.display = "none";
+    emoji.textContent = HAND_EMOJI;
+
+    const startHandAnim = () => {
+      cursor.style.display = "none";
+      emoji.style.display = "inline";
+      // Restart CSS animation by removing then re-adding it
+      emoji.style.animation = "none";
+      void emoji.offsetWidth;
+      emoji.style.animation = "hand-collapse 1s ease forwards";
+      const onEnd = () => {
+        if (done) return;
+        wrap.style.transition = "opacity 0.35s ease";
+        wrap.style.opacity = "0";
+      };
+      emoji.addEventListener("animationend", onEnd, { once: true });
+    };
+
+    const tick = () => {
+      if (done) return;
+      const { x: tx, y: ty } = mousePosRef.current;
+      const dx = tx - x;
+      const dy = ty - y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 32) { cancelAnimationFrame(rafId); startHandAnim(); return; }
+      x += dx * 0.032;
+      y += dy * 0.032;
+      wrap.style.transform = `translate(${x}px, ${y}px)`;
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      done = true;
+      cancelAnimationFrame(rafId);
+      emoji.style.animation = "none";
+    };
+  }, [triggerCount]);
+
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes hand-collapse {
+          0%   { transform: scale(0.2) rotate(-30deg) translateY(10px); opacity: 0; }
+          25%  { transform: scale(1.35) rotate(12deg) translateY(-6px); opacity: 1; }
+          50%  { transform: scale(0.9) rotate(-6deg)  translateY(2px);  opacity: 1; }
+          68%  { transform: scale(1.05) rotate(4deg)  translateY(-2px); opacity: 1; }
+          80%  { transform: scale(0.97) rotate(-1deg) translateY(0px);  opacity: 1; }
+          88%  { transform: scale(1)    rotate(0deg)  translateY(0px);  opacity: 1; }
+          100% { transform: scale(0.15) rotate(-25deg) translateY(8px); opacity: 0; }
+        }
+      `}} />
+      <div ref={wrapRef} style={{ position: "fixed", top: 0, left: 0, zIndex: 99994, pointerEvents: "none", opacity: 0 }}>
+        <div ref={cursorRef} style={{ position: "relative" }}>
+          <svg width="16" height="26" viewBox="0 0 16 26" fill="none">
+            <path
+              d="M1 1 L1 21 L6 15 L9 25 L12 23 L9 14 L15 14 Z"
+              fill="#6366f1" stroke="white" strokeWidth="1.5"
+              strokeLinejoin="round" strokeLinecap="round"
+            />
+          </svg>
+          <div style={{
+            position: "absolute", top: 22, left: 12,
+            background: "#6366f1", color: "white",
+            fontSize: 11, fontWeight: 600, letterSpacing: "0.01em",
+            padding: "2px 8px 3px", borderRadius: 10, lineHeight: 1.55,
+            whiteSpace: "nowrap", fontFamily: "Inter, sans-serif",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.22)",
+          }}>Qiyu</div>
+        </div>
+        <span ref={emojiRef} style={{ fontSize: 40, lineHeight: 1, display: "none", transformOrigin: "center" }} />
+      </div>
+    </>
   );
 }
 
 // ── Index ─────────────────────────────────────────────────────────────────
 
 function Index() {
+  const navigate           = useNavigate();
   const bgRef              = useRef<HTMLDivElement>(null);
   const bgTopRef           = useRef<HTMLDivElement>(null);
   const contentWrapperRef  = useRef<HTMLDivElement>(null);
@@ -482,6 +673,8 @@ function Index() {
   const atFooterRef         = useRef(false);
   const activeSectionRef    = useRef<string | null>(null);
   const othersTypeRef       = useRef<"human" | "AI" | null>(null);
+  const mousePosRef         = useRef({ x: 0, y: 0 });
+  const rightPanelRef       = useRef<HTMLDivElement>(null);
 
   const lastScrollY    = useRef(0);
   const savedScrollY   = useRef(0);
@@ -494,6 +687,10 @@ function Index() {
   const [cursorPos, setCursorPos]             = useState({ x: 0, y: 0 });
   const [hoveredSlug, setHoveredSlug]         = useState<string | null>(null);
   const [openedCard, setOpenedCard]           = useState<CardModalData | null>(null);
+  const [hoveredDiagramSegment, setHoveredDiagramSegment] = useState<string | null>(null);
+  const [hoveredCircleGlobal, setHoveredCircleGlobal]   = useState<"me" | "others" | null>(null);
+  const [collaboratorTrigger, setCollaboratorTrigger] = useState(0);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const hoveredSections = hoveredSlug ? (ARTICLE_META[hoveredSlug]?.sections ?? []) : [];
   const hoverKind = hoveredSlug && ARTICLE_META[hoveredSlug]?.sections ? "Article" : null;
@@ -524,17 +721,25 @@ function Index() {
       const p   = ease(raw);
       const vw  = window.innerWidth;
       if (diagramInnerRef.current) {
-        const w = Math.min(600, vw * 0.9) * (1 - p) + (vw * 0.38 - 60) * p;
+        const w = Math.min(820, vw * 0.84) * (1 - p) + (vw * 0.38 - 60) * p;
         diagramInnerRef.current.style.maxWidth  = `${w}px`;
         diagramInnerRef.current.style.transform = `translateX(calc(${-31 * p}vw))`;
       }
       const panelOpacity = atFooterRef.current ? 0 : p;
       if (bgRef.current)    bgRef.current.style.opacity    = String(panelOpacity);
       if (bgTopRef.current) bgTopRef.current.style.opacity = String(panelOpacity);
+
+      // Use active section's background color, fallback to expression for landing
+      const bgColor = activeSectionRef.current
+        ? getSectionColor(activeSectionRef.current, isDarkMode)
+        : getSectionColor("expression", isDarkMode);
+      if (bgRef.current)        bgRef.current.style.background        = bgColor;
+      if (bgTopRef.current)     bgTopRef.current.style.background     = bgColor;
+      if (rightPanelRef.current) rightPanelRef.current.style.background = bgColor;
       const ho = Math.max(0, 1 - p / 0.4);
       if (heroTextRef.current) {
         heroTextRef.current.style.opacity      = String(ho);
-        heroTextRef.current.style.maxHeight    = p >= 1 ? "0"     : "200px";
+        heroTextRef.current.style.maxHeight    = p >= 1 ? "0"     : "280px";
         heroTextRef.current.style.overflow     = "hidden";
         heroTextRef.current.style.marginBottom = p >= 1 ? "0"     : "2.5rem";
       }
@@ -584,6 +789,19 @@ function Index() {
     window.addEventListener("scroll", onScroll, { passive: true });
     tick();
     return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, [isDarkMode]);
+
+  // Clear diagram segment hover when settled
+  useEffect(() => {
+    if (settled) setHoveredDiagramSegment(null);
+    return () => document.body.removeAttribute("data-cursor");
+  }, [settled]);
+
+  // Track live mouse position for the collaborator cursor animation
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => { mousePosRef.current = { x: e.clientX, y: e.clientY }; };
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMove);
   }, []);
 
   // Nav hide-on-scroll-down, show-on-scroll-up
@@ -625,6 +843,21 @@ function Index() {
     scrollToSection(s);
   }, [scrollToSection]);
 
+  const handleCircleClick = useCallback((circle: "me" | "others") => {
+    navigate({ to: circle === "me" ? "/think" : "/listen" });
+  }, [navigate]);
+
+  const handleCircleHover = useCallback((circle: "me" | "others" | null) => {
+    setHoveredCircleGlobal(circle);
+    if (circle) {
+      document.body.setAttribute("data-cursor", "circle");
+      if (circle === "me") setCollaboratorTrigger(t => t + 1);
+    } else {
+      if (!settledRef.current) document.body.setAttribute("data-cursor", "robot");
+      else document.body.removeAttribute("data-cursor");
+    }
+  }, []);
+
   const activeSegment = atFooter ? "behave" : (activeSection ? SECTION_TO_SEGMENT[activeSection] : null);
 
   return (
@@ -640,25 +873,102 @@ function Index() {
         </div>
       )}
 
+      {/* "others" star dots — people as stars across the page */}
+      {OTHERS_STARS.map((star, i) => (
+        <div key={`star-${i}`} style={{
+          position: "fixed", zIndex: 45, pointerEvents: "none",
+          left: `${star.x}%`, top: `${star.y}%`,
+          width: star.r * 2, height: star.r * 2,
+          borderRadius: "50%", background: "#606060",
+          transform: "translate(-50%, -50%)",
+          opacity: hoveredCircleGlobal === "others" && !settled ? 1 : 0,
+          transition: `opacity 0.5s ease ${i * 0.03}s`,
+        }} />
+      ))}
+
+      {/* Scatter gallery — "me" images + arc segments, landing state only */}
+      {[...Object.entries(CIRCLE_HOVER_SCATTER).filter(([k]) => k === "me"), ...Object.entries(SEGMENT_HOVER_SCATTER)].map(([key, items]) => {
+        const isActive = !settled && (hoveredCircleGlobal === key || hoveredDiagramSegment === key);
+        return items.map((item, i) => (
+          <div key={`scatter-${key}-${i}`} style={{
+            position: "fixed", pointerEvents: "none", zIndex: 45,
+            left: `${item.x}%`, top: `${item.y}%`, width: item.w,
+            borderRadius: 14, overflow: "hidden",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.2)",
+            opacity: isActive ? 1 : 0,
+            transform: `rotate(${item.rot}deg)`,
+            transition: `opacity 0.4s ease ${i * 0.06}s`,
+          }}>
+            {item.type === "video"
+              ? <video src={`${item.src}#t=0.001`} muted loop autoPlay playsInline style={{ width: "100%", display: "block" }} />
+              : <img src={item.src} alt="" style={{ width: "100%", display: "block" }} />
+            }
+          </div>
+        ));
+      })}
+
       {/* Dear footer */}
       <div className="fixed inset-0 z-0 bg-neutral-950"><DearFooter /></div>
 
       {/* Left panel top fill — covers the 0→NAV_HEIGHT gap above the fixed overlay */}
-      <div ref={bgTopRef} style={{ position: "fixed", top: 0, left: 0, height: NAV_HEIGHT, width: LEFT_W, background: "#fafafa", borderRight: "1px solid #f0f0f0", zIndex: 29, opacity: 0, pointerEvents: "none" }} />
+      <div ref={bgTopRef} style={{ position: "fixed", top: 0, left: 0, height: NAV_HEIGHT, width: LEFT_W, background: "#fafafa", zIndex: 29, opacity: 0, pointerEvents: "none" }} />
+
+      {/* Dark/light mode toggle button */}
+      <button
+        onClick={() => setIsDarkMode(!isDarkMode)}
+        style={{
+          position: "fixed",
+          top: 12,
+          left: "calc(19% - 20px)",
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          border: "none",
+          background: isDarkMode ? "#3a3a3a" : "#e8e8e8",
+          cursor: "pointer",
+          zIndex: 31,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 20,
+          transition: "background 0.3s ease",
+        }}
+      >
+        {isDarkMode ? "☀️" : "🌙"}
+      </button>
 
       {/* Single diagram overlay — scroll loop animates this */}
       <div style={{ position: "fixed", top: NAV_HEIGHT, left: 0, right: 0, bottom: 0, zIndex: 30, pointerEvents: "none", overflow: "hidden", opacity: atFooter ? 0 : 1, transition: "opacity 0.5s ease" }}>
-        <div ref={bgRef} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: LEFT_W, background: "#fafafa", borderRight: "1px solid #f0f0f0", opacity: 0 }} />
+
+
+        <div ref={bgRef} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: LEFT_W, background: "#fafafa", opacity: 0 }} />
         {/* pointerEvents: none so right panel receives clicks normally.
             Only diagramInnerRef (which sits in the left panel in split mode)
             has pointerEvents: auto — it's the only interactive element here. */}
         <div ref={contentWrapperRef} style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", overflow: "hidden" }}>
-          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: settled ? "flex-start" : "center", width: "100%", height: "100%", maxWidth: 600, pointerEvents: "auto", overflow: "hidden", clipPath: "inset(0 -20px)" }}>
+          <div ref={diagramInnerRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: settled ? "flex-start" : "center", width: "100%", height: "100%", maxWidth: 820, pointerEvents: "auto", overflow: "hidden", clipPath: "inset(0 -20px)" }}>
 
-            {/* Hero header */}
-            <div ref={heroTextRef} style={{ textAlign: "center", marginBottom: "2.5rem", width: "100%" }}>
-              <h2 style={{ fontSize: 32, fontWeight: 600, color: "#171717", marginBottom: 12, lineHeight: 1.15, letterSpacing: "-0.01em" }}>Hello Humans.</h2>
-              <p style={{ fontSize: 15, color: "#737373", lineHeight: 1.65 }}>Qiyu is exploring technology that brings people closer.</p>
+            {/* Hero header — subtitle IS the headline now, crossfades with section question on arc hover */}
+            <div ref={heroTextRef} style={{ textAlign: "center", marginBottom: "2rem", width: "100%" }}>
+              <div style={{ position: "relative", minHeight: "7rem" }}>
+                <h2 style={{
+                  fontSize: 17, fontWeight: 400, color: "#555",
+                  lineHeight: 1.08, letterSpacing: "-0.03em",
+                  position: "absolute", inset: 0,
+                  opacity: hoveredDiagramSegment ? 0 : 1,
+                  transition: "opacity 0.35s ease",
+                }}>
+                  Qiyu is exploring technology that brings people closer.
+                </h2>
+                <h2 style={{
+                  fontSize: 17, fontWeight: 400, color: "#555",
+                  lineHeight: 1.08, letterSpacing: "-0.03em",
+                  opacity: hoveredDiagramSegment ? 1 : 0,
+                  transition: "opacity 0.35s ease",
+                }}>
+                  {hoveredDiagramSegment ? SECTION_QUESTIONS[SEGMENT_TO_SECTION[hoveredDiagramSegment]] : ""}
+                </h2>
+              </div>
             </div>
 
             {/* Question titles — all 4 stacked, crossfade via CSS. No re-mounts, no layout shift. */}
@@ -671,7 +981,7 @@ function Index() {
                     transition: "opacity 0.28s ease",
                     pointerEvents: activeSection === id ? "auto" : "none",
                   }}>
-                    <h2 style={{ fontSize: 30, fontWeight: 600, color: "#171717", lineHeight: 1.2, letterSpacing: "-0.01em" }}>
+                    <h2 style={{ fontSize: 36, fontWeight: 600, color: "#171717", lineHeight: 1.15, letterSpacing: "-0.025em" }}>
                       {(id === activeSection && othersType === "AI" && SECTION_AI_QUESTIONS[id]) || SECTION_QUESTIONS[id]}
                     </h2>
                   </div>
@@ -684,7 +994,14 @@ function Index() {
 
             {/* THE single diagram + emoji badge as real DOM element */}
             <div style={{ position: "relative", width: "100%" }}>
-              <TwoCirclesDiagram activeSegment={settled ? activeSegment : null} onSegmentClick={handleSegmentClick} othersIsAI={othersType === "AI"} hideLabels={settled} />
+              <TwoCirclesDiagram
+                activeSegment={settled ? activeSegment : null}
+                onSegmentClick={handleSegmentClick}
+                onSegmentHover={!settled ? setHoveredDiagramSegment : undefined}
+                onCircleClick={handleCircleClick}
+                onCircleHover={handleCircleHover}
+                othersIsAI={othersType === "AI"}
+              />
               {othersType === "AI" && (
                 <span style={{
                   position: "absolute", top: "30%", left: "89%",
@@ -734,12 +1051,12 @@ function Index() {
         <div className="flex">
           <div style={{ width: LEFT_W, flexShrink: 0 }} />
 
-          {/* Right panel */}
-          <div className="flex-1 min-w-0 bg-stone-900" style={{ opacity: settled ? 1 : 0, pointerEvents: settled ? "auto" : "none", transition: "opacity 0.4s ease" }}>
+          {/* Right panel — background syncs with active section */}
+          <div ref={rightPanelRef} className="flex-1 min-w-0" style={{ background: getSectionColor("expression", isDarkMode), opacity: settled ? 1 : 0, pointerEvents: settled ? "auto" : "none", transition: "opacity 0.4s ease" }}>
 
             {/* ── 01 New ways to express ── */}
-            <section id="expression" className="px-6 pt-8 pb-12 scroll-mt-24">
-              <div className="grid grid-cols-2 gap-5">
+            <section id="expression" className="px-8 pt-10 pb-14 scroll-mt-24" style={{ background: getSectionColor("expression", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
+              <div className="grid grid-cols-3 gap-4">
                 <Card title="Hand gesture interactions" meta="Vibe-coding · Embodied" href="/play" {...ch} media={{ type: "video", src: "/articles/hand-gesture.mp4" }} />
                 <Card title="Voice interaction" meta="Vibe-coding · Voice" href="/play" {...ch} media={{ type: "video", src: "/articles/voice.mp4" }} />
                 <Card title="Palo Alto moment" meta="Vibe-coding · Place & context" href="/play" {...ch} media={{ type: "video", src: "/articles/palo-alto.mp4" }} />
@@ -748,16 +1065,14 @@ function Index() {
               </div>
             </section>
 
-            <div className="mx-6 border-t border-neutral-800" />
-
             {/* ── 02 How others think ── */}
-            <section id="others-think" className="px-6 pt-8 pb-12 scroll-mt-24">
-              <div className="grid grid-cols-2 gap-5">
-                <div id="sentinel-others-think-human" className="col-span-2" style={{ height: 0 }} />
+            <section id="others-think" className="px-8 pt-10 pb-14 scroll-mt-24" style={{ background: getSectionColor("others-think", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
+              <div className="grid grid-cols-3 gap-4">
+                <div id="sentinel-others-think-human" className="col-span-3" style={{ height: 0 }} />
                 <GroupLabel label="Others = human" />
                 <Card title="Research through design" meta="Case study · Service design" href="/design-as-a-research-tool" slug="design-as-a-research-tool" {...ch} media={{ type: "image", src: "/articles/design-as-research-tool-thumb.png" }} />
                 <Card title="A Social Experiment about meeting strangers" meta="Experiment · Connection" href="https://www.linkedin.com/feed/update/urn:li:activity:7404207024164683776/" isExternal {...ch} media={{ type: "image", src: "/articles/meet-stranger-calendly.png" }} />
-                <div id="sentinel-others-think-ai" className="col-span-2" style={{ height: 0 }} />
+                <div id="sentinel-others-think-ai" className="col-span-3" style={{ height: 0 }} />
                 <GroupLabel label="Others = AI" />
                 <Card title="Physical AI" meta="Research · Embodied data" href="/physical-ai" slug="physical-ai" {...ch} media={{ type: "image", src: "/articles/physical-ai-thumb.png" }} />
                 <Card title="Design the Human-AI relationships, then interaction" meta="Article · AI UX" href="/designing-next-gen-ai-products" slug="designing-next-gen-ai-products" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
@@ -766,17 +1081,15 @@ function Index() {
               </div>
             </section>
 
-            <div className="mx-6 border-t border-neutral-800" />
-
             {/* ── 03 What others say ── */}
-            <section id="others-say" className="px-6 pt-8 pb-12 scroll-mt-24">
-              <div className="grid grid-cols-2 gap-5">
-                <div id="sentinel-others-say-human" className="col-span-2" style={{ height: 0 }} />
+            <section id="others-say" className="px-8 pt-10 pb-14 scroll-mt-24" style={{ background: getSectionColor("others-say", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
+              <div className="grid grid-cols-3 gap-4">
+                <div id="sentinel-others-say-human" className="col-span-3" style={{ height: 0 }} />
                 <GroupLabel label="Others = human" />
                 <Card title="Prototypes beyond software" meta="Non-software · Analog" href="/hello-humans" {...ch} media={{ type: "image", src: "/articles/hello-humans-notebook.jpg" }} />
                 <Card title="Voices that shaped how I think" meta="Interactive graph · /listen" href="/listen" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#18181b 0%,#27272a 100%)", label: "Find joy in the work. Inspire and be inspired. Hold your urge to solve." }} />
 
-                <div id="sentinel-others-say-ai" className="col-span-2" style={{ height: 0 }} />
+                <div id="sentinel-others-say-ai" className="col-span-3" style={{ height: 0 }} />
                 <GroupLabel label="Others = AI" />
                 <Card title="Conversations that earn trust" meta="Research · Conversation design" href="/designing-for-conversations-that-earn-trust" slug="designing-for-conversations-that-earn-trust" {...ch} media={{ type: "image", src: "/articles/trust-thumb.png", thumbnailSize: "small" }} />
                 <Card title="What do prototypes prototype?" meta="Article · Method" href="/what-do-prototypes-prototype" slug="what-do-prototypes-prototype" {...ch} media={{ type: "image", src: "/articles/prototype-triangle-thumb.svg", thumbnailSize: "small" }} />
@@ -785,18 +1098,16 @@ function Index() {
               </div>
             </section>
 
-            <div className="mx-6 border-t border-neutral-800" />
-
             {/* ── 04 I interpret ── */}
-            <section id="i-interpret" className="px-6 pt-8 pb-12 scroll-mt-24">
-              <div className="grid grid-cols-2 gap-5">
+            <section id="i-interpret" className="px-8 pt-10 pb-14 scroll-mt-24" style={{ background: getSectionColor("i-interpret", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
+              <div className="grid grid-cols-3 gap-4">
                 <Card title="How Claude is shaping how I think" meta="Research · Tools" href="/claude-code-research" slug="claude-code-research" {...ch} media={{ type: "image", src: "/articles/claude-code-thumb.png", thumbnailSize: "small" }} />
                 <Card title="AIOS — seeing your own blindspots" meta="Prototype · Self-reflection" badge="in progress" {...ch} media={{ type: "concept", icon: "◎", label: "A personal OS for mapping what I know, don't know, and don't know I don't know.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
                 <Card title="AI-supported journaling" meta="Concept · Self-understanding" badge="coming soon" {...ch} media={{ type: "concept", gradient: "linear-gradient(135deg,#f5f5f0 0%,#e8e8e0 100%)", label: "Using AI to surface patterns in how I interpret the world and what I actually want." }} />
               </div>
             </section>
 
-            <div className="px-6 pb-10 pt-4 text-center text-xs text-neutral-600">© 2026 — sketched with fountain pen & paper</div>
+            <div className="px-6 pb-10 pt-4 text-center text-xs text-neutral-500">© 2026 — sketched with fountain pen & paper</div>
           </div>
         </div>
       </div>
@@ -804,6 +1115,7 @@ function Index() {
       <div ref={footerSpacerRef} className="h-screen" />
 
       {openedCard && <ArticleModal card={openedCard} onClose={handleModalClose} />}
+      <CollaboratorCursor triggerCount={collaboratorTrigger} mousePosRef={mousePosRef} />
     </div>
   );
 }
