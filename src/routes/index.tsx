@@ -1055,7 +1055,7 @@ function Index() {
           <div ref={rightPanelRef} className="flex-1 min-w-0" style={{ background: getSectionColor("expression", isDarkMode), opacity: settled ? 1 : 0, pointerEvents: settled ? "auto" : "none", transition: "opacity 0.4s ease" }}>
 
             {/* ── 01 New ways to express ── */}
-            <section id="expression" className="px-8 pt-10 pb-14 scroll-mt-24" style={{ background: getSectionColor("expression", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
+            <section id="expression" className="px-8 pt-20 pb-32 scroll-mt-24" style={{ background: getSectionColor("expression", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
               <div className="grid grid-cols-3 gap-4">
                 <Card title="Hand gesture interactions" meta="Vibe-coding · Embodied" href="/play" {...ch} media={{ type: "video", src: "/articles/hand-gesture.mp4" }} />
                 <Card title="Voice interaction" meta="Vibe-coding · Voice" href="/play" {...ch} media={{ type: "video", src: "/articles/voice.mp4" }} />
@@ -1066,7 +1066,7 @@ function Index() {
             </section>
 
             {/* ── 02 How others think ── */}
-            <section id="others-think" className="px-8 pt-10 pb-14 scroll-mt-24" style={{ background: getSectionColor("others-think", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
+            <section id="others-think" className="px-8 pt-20 pb-32 scroll-mt-24" style={{ background: getSectionColor("others-think", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
               <div className="grid grid-cols-3 gap-4">
                 <div id="sentinel-others-think-human" className="col-span-3" style={{ height: 0 }} />
                 <GroupLabel label="Others = human" />
@@ -1082,7 +1082,7 @@ function Index() {
             </section>
 
             {/* ── 03 What others say ── */}
-            <section id="others-say" className="px-8 pt-10 pb-14 scroll-mt-24" style={{ background: getSectionColor("others-say", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
+            <section id="others-say" className="px-8 pt-20 pb-32 scroll-mt-24" style={{ background: getSectionColor("others-say", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
               <div className="grid grid-cols-3 gap-4">
                 <div id="sentinel-others-say-human" className="col-span-3" style={{ height: 0 }} />
                 <GroupLabel label="Others = human" />
@@ -1099,7 +1099,7 @@ function Index() {
             </section>
 
             {/* ── 04 I interpret ── */}
-            <section id="i-interpret" className="px-8 pt-10 pb-14 scroll-mt-24" style={{ background: getSectionColor("i-interpret", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
+            <section id="i-interpret" className="px-8 pt-20 pb-32 scroll-mt-24" style={{ background: getSectionColor("i-interpret", isDarkMode), color: isDarkMode ? "#f5f5f5" : "inherit" }}>
               <div className="grid grid-cols-3 gap-4">
                 <Card title="How Claude is shaping how I think" meta="Research · Tools" href="/claude-code-research" slug="claude-code-research" {...ch} media={{ type: "image", src: "/articles/claude-code-thumb.png", thumbnailSize: "small" }} />
                 <Card title="AIOS — seeing your own blindspots" meta="Prototype · Self-reflection" badge="in progress" {...ch} media={{ type: "concept", icon: "◎", label: "A personal OS for mapping what I know, don't know, and don't know I don't know.", gradient: "linear-gradient(135deg,#f0f0f0 0%,#e2e2e2 100%)" }} />
